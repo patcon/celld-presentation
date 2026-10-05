@@ -1,4 +1,6 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; --accent: #f6821f; }
+/* No pull-to-refresh or scroll bounce: an accidental refresh drops the WebSocket mid-talk. */
+html, body { overscroll-behavior: none; }
 body { margin: 0; }
 
 /* Slides */
