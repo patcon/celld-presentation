@@ -4,7 +4,7 @@ import { DECK_SOCKET } from "../useDeck";
 
 const MAX_LINES = 200;
 
-type Line = { id: number; time: string; type: string; data: string };
+type Line = { id: number; time: string; from: string; type: string; data: string };
 
 let nextId = 0;
 
@@ -19,16 +19,16 @@ export function MessageLog({ layout = "full" }: { layout?: MessageLogLayout }) {
   const [lines, setLines] = useState<Line[]>([]);
   const body = useRef<HTMLDivElement>(null);
 
-  const log = (type: string, data = "") =>
-    setLines((ls) => [...ls, { id: nextId++, time: timestamp(), type, data }].slice(-MAX_LINES));
+  const log = (type: string, data = "", from = "") =>
+    setLines((ls) => [...ls, { id: nextId++, time: timestamp(), from, type, data }].slice(-MAX_LINES));
 
   usePartySocket({
     ...DECK_SOCKET,
     onOpen: () => log("open"),
     onClose: () => log("close"),
     onMessage(e) {
-      const { type, ...rest } = JSON.parse(e.data);
-      log(type, JSON.stringify(rest));
+      const { type, from, ...rest } = JSON.parse(e.data);
+      log(type, JSON.stringify(rest), from);
     },
   });
 
@@ -46,12 +46,14 @@ export function MessageLog({ layout = "full" }: { layout?: MessageLogLayout }) {
       <div ref={body} className="terminal-body" role="log">
         <div className="terminal-line terminal-header" aria-hidden>
           <span className="time">time</span>
+          <span className="from">client</span>
           <span className="type">type</span>
           <span className="data">payload</span>
         </div>
         {lines.map((l) => (
           <div key={l.id} className="terminal-line">
             <span className="time">{l.time}</span>
+            <span className="from">{l.from.slice(0, 8)}</span>
             <span className={`type type-${l.type}`}>{l.type}</span>
             <span className="data">{l.data}</span>
           </div>

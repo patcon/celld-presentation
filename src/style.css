@@ -59,6 +59,7 @@ body { margin: 0; }
 .terminal-body { flex: 1; overflow-y: auto; padding: 0 1rem 1rem; scrollbar-width: none; }
 .terminal-line { display: flex; gap: 1ch; white-space: pre-wrap; word-break: break-all; }
 .terminal-line .time { color: var(--term-dim); flex-shrink: 0; width: 8ch; }
+.terminal-line .from { flex-shrink: 0; width: 8ch; color: #d2a8ff; }
 .terminal-line .type { flex-shrink: 0; min-width: 8ch; color: #79c0ff; }
 .terminal-line .type-reaction { color: var(--accent); }
 .terminal-line .type-open, .terminal-line .type-close { color: var(--term-dim); font-style: italic; }

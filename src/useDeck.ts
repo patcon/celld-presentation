@@ -8,8 +8,22 @@ import {
   type ServerMessage,
 } from "../shared/protocol";
 
+const randomId = () => crypto.randomUUID?.() ?? Math.random().toString(16).slice(2);
+
+// One id per browser, kept across reloads and reconnects, so the Deck can tell clients apart.
+function clientId() {
+  try {
+    const id = localStorage.getItem("clientId") ?? randomId();
+    localStorage.setItem("clientId", id);
+    return id;
+  } catch {
+    return randomId();
+  }
+}
+
 // Where every client connects; shared so other views can open their own socket.
 export const DECK_SOCKET = {
+  id: clientId(),
   basePath: "api/ws",
   protocol: location.protocol === "https:" ? "wss" : "ws",
 } as const;

@@ -5,6 +5,7 @@ import {
   type ClientMessage,
   type Features,
   type ServerMessage,
+  type StateMessage,
 } from "../shared/protocol";
 import { WebSocketServer } from "./WebSocketServer";
 
@@ -19,25 +20,26 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     this.send(ws, await this.state());
   }
 
-  async onMessage(_ws: WebSocket, msg: ClientMessage) {
+  async onMessage(ws: WebSocket, msg: ClientMessage) {
+    const from = this.clientId(ws);
     switch (msg.type) {
       case "goTo":
         await this.ctx.storage.put("slide", msg.slide);
-        return this.broadcast(await this.state());
+        return this.broadcast({ ...(await this.state()), from });
       case "toggle": {
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, [msg.feature]: msg.on });
-        return this.broadcast(await this.state());
+        return this.broadcast({ ...(await this.state()), from });
       }
       case "react":
         // Reactions are fire-and-forget: relayed to everyone, never stored.
         if (!(await this.features()).reactions) return;
         if (!REACTION_EMOJIS.includes(msg.emoji)) return;
-        return this.broadcast({ type: "reaction", emoji: msg.emoji });
+        return this.broadcast({ type: "reaction", emoji: msg.emoji, from });
     }
   }
 
-  async state(): Promise<ServerMessage> {
+  async state(): Promise<StateMessage> {
     const slide = (await this.ctx.storage.get<number>("slide")) ?? 0;
     return { type: "state", slide, features: await this.features() };
   }

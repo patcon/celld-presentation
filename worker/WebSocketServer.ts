@@ -1,5 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 
+// Stored on each socket, so it survives hibernation.
+type Attachment = { id: string };
+
 // A Durable Object that speaks JSON over hibernatable WebSockets.
 // Subclasses implement the on* hooks and call send/broadcast.
 export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
@@ -17,6 +20,9 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
     const [client, server] = Object.values(new WebSocketPair());
     // acceptWebSocket (not server.accept()) lets the object hibernate while sockets stay open.
     this.ctx.acceptWebSocket(server, this.tags(request));
+    // partysocket sends its client id as `?_pk=`; other clients get a fresh one.
+    const id = new URL(request.url).searchParams.get("_pk")?.slice(0, 64) || crypto.randomUUID();
+    server.serializeAttachment({ id } satisfies Attachment);
     await this.onConnect(server);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -43,6 +49,10 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
   broadcast(msg: Out, tag?: string) {
     const data = JSON.stringify(msg);
     for (const ws of this.ctx.getWebSockets(tag)) ws.send(data);
+  }
+
+  clientId(ws: WebSocket) {
+    return (ws.deserializeAttachment() as Attachment).id;
   }
 
   hasTag(ws: WebSocket, tag: string) {

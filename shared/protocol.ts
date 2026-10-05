@@ -12,6 +12,7 @@ export type ClientMessage =
   | { type: "toggle"; feature: keyof Features; on: boolean }
   | { type: "react"; emoji: Emoji };
 
-export type ServerMessage =
-  | { type: "state"; slide: number; features: Features }
-  | { type: "reaction"; emoji: Emoji };
+// `from` is the id of the client whose message caused this one.
+// The state snapshot sent on connect has no `from`.
+export type StateMessage = { type: "state"; slide: number; features: Features; from?: string };
+export type ServerMessage = StateMessage | { type: "reaction"; emoji: Emoji; from: string };
