@@ -1,13 +1,18 @@
 import { slides } from "./content";
 import { useDeck } from "./useDeck";
+import { useFloatingReactions } from "./FloatingReactions";
 
 export function Slides() {
-  const { slide } = useDeck();
+  const reactions = useFloatingReactions();
+  const { slide } = useDeck({ onReaction: reactions.add });
   const s = slides[slide] ?? slides[0];
   return (
-    <main id="slide">
-      <h1>{s.title}</h1>
-      <p>{s.body}</p>
-    </main>
+    <>
+      {reactions.layer}
+      <main id="slide">
+        <h1>{s.title}</h1>
+        <p>{s.body}</p>
+      </main>
+    </>
   );
 }
