@@ -1,0 +1,9 @@
+{
+  "name": "celld-presentation",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {                                              // [!code ++]
+    "bindings": [{ "name": "DECK", "class_name": "Deck" }]          // [!code ++]
+  },                                                                // [!code ++]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Deck"] }]   // [!code ++]
+}

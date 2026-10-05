@@ -1,0 +1,5 @@
+{
+  "name": "celld-presentation",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01"
+}
