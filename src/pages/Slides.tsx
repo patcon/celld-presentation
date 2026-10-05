@@ -1,6 +1,6 @@
-import { slides } from "./content";
-import { useDeck } from "./useDeck";
-import { useFloatingReactions } from "./FloatingReactions";
+import { slides } from "../content";
+import { useDeck } from "../useDeck";
+import { useFloatingReactions } from "../components/FloatingReactions";
 
 export function Slides() {
   const reactions = useFloatingReactions();

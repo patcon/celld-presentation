@@ -1,6 +1,6 @@
-import { slides } from "./content";
-import { useDeck } from "./useDeck";
-import type { Features } from "../shared/protocol";
+import { slides } from "../content";
+import { useDeck } from "../useDeck";
+import type { Features } from "../../shared/protocol";
 
 const FEATURE_LABELS: Record<keyof Features, string> = {
   reactions: "Reactions",

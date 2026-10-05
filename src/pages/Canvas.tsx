@@ -1,6 +1,6 @@
-import { REACTION_EMOJIS } from "../shared/protocol";
-import { useDeck } from "./useDeck";
-import { useFloatingReactions } from "./FloatingReactions";
+import { REACTION_EMOJIS } from "../../shared/protocol";
+import { useDeck } from "../useDeck";
+import { useFloatingReactions } from "../components/FloatingReactions";
 
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Canvas() {

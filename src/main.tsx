@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { Slides } from "./Slides";
-import { Remote } from "./Remote";
-import { Canvas } from "./Canvas";
+import { Slides } from "./pages/Slides";
+import { Remote } from "./pages/Remote";
+import { Canvas } from "./pages/Canvas";
 import "./style.css";
 
 // Each view is opened directly on its own device, so a pathname switch is enough.

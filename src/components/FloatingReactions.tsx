@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Emoji } from "../shared/protocol";
+import type { Emoji } from "../../shared/protocol";
 
 type Floater = { id: number; emoji: Emoji; left: number; duration: number };
 
