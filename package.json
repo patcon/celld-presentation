@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "hono": "^4.13.13",
+    "qrcode.react": "^4.2.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   }

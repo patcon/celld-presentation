@@ -10,8 +10,12 @@ export function Slides() {
     <>
       {reactions.layer}
       <main id="slide">
-        <h1>{s.title}</h1>
-        <p>{s.body}</p>
+        {s.content ?? (
+          <>
+            <h1>{s.title}</h1>
+            <p>{s.body}</p>
+          </>
+        )}
       </main>
     </>
   );
