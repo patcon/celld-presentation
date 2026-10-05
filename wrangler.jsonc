@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "celld-presentation",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "not_found_handling": "404-page",
+    "run_worker_first": ["/api/*"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "DECK", "class_name": "Deck" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Deck"] }]
+}
