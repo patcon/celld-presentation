@@ -4,7 +4,7 @@ import { slides } from "./content";
 export function Slides() {
   const [slide, setSlide] = useState(0);
 
-  // Other screens only find out about a change by asking.               // [!code focus]
+  // Without WebSockets, other devices only find out about a change by HTTP request. // [!code focus]
   useEffect(() => {                                                       // [!code focus]
     const load = () => fetch("/api").then((res) => res.json()).then(setSlide); // [!code focus]
     load();                                                               // [!code focus]
