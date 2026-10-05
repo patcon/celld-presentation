@@ -4,6 +4,7 @@ import {
   REACTION_EMOJIS,
   type ClientMessage,
   type Features,
+  type PresenceMessage,
   type ServerMessage,
   type StateMessage,
 } from "../shared/protocol";
@@ -14,6 +15,7 @@ type Env = {
   SELFIES: R2Bucket;
 };
 
+const AUDIENCE = "audience";
 const MAX_SELFIE_BYTES = 1024 * 1024;
 
 const selfieKey = (id: string) => `selfies/${id}.jpg`;
@@ -21,8 +23,21 @@ const selfieKey = (id: string) => `selfies/${id}.jpg`;
 // One Deck object holds the shared state for the whole presentation.
 // Every client (slides screen, presenter remote, audience participation) connects to the same instance.
 export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
+  // /participation connects with `?role=audience`; only those sockets count towards presence.
+  tags(request: Request) {
+    return new URL(request.url).searchParams.get("role") === AUDIENCE ? [AUDIENCE] : [];
+  }
+
   async onConnect(ws: WebSocket) {
     this.send(ws, await this.state());
+    if (!(await this.features()).presence) return;
+    // A new audience member changes the list for everyone; anyone else just needs a copy.
+    if (this.hasTag(ws, AUDIENCE)) await this.broadcastPresence();
+    else this.send(ws, await this.presence());
+  }
+
+  async onClose(ws: WebSocket) {
+    if (this.hasTag(ws, AUDIENCE)) await this.broadcastPresence(ws);
   }
 
   async onMessage(ws: WebSocket, msg: ClientMessage) {
@@ -35,7 +50,9 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
         if (!(msg.feature in DEFAULT_FEATURES)) return;
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, [msg.feature]: msg.on });
-        return this.broadcast({ ...(await this.state()), from });
+        this.broadcast({ ...(await this.state()), from });
+        if (msg.feature === "presence" && msg.on) await this.broadcastPresence();
+        return;
       }
       case "react":
         // Reactions are fire-and-forget: relayed to everyone, never stored.
@@ -51,6 +68,7 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     if (!(await this.features()).selfies) return false;
     await this.env.SELFIES.put(selfieKey(id), image, { httpMetadata: { contentType: "image/jpeg" } });
     await this.ctx.storage.put(`selfie:${id}`, Date.now());
+    await this.broadcastPresence();
     return true;
   }
 
@@ -61,6 +79,20 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
 
   async features(): Promise<Features> {
     return { ...DEFAULT_FEATURES, ...(await this.ctx.storage.get<Features>("features")) };
+  }
+
+  // Everyone with /participation open, once each however many tabs they have.
+  // `leaving` is a socket that is closing but may still be listed.
+  async presence(leaving?: WebSocket): Promise<PresenceMessage> {
+    const sockets = this.ctx.getWebSockets(AUDIENCE).filter((ws) => ws !== leaving);
+    const ids = [...new Set(sockets.map((ws) => this.clientId(ws)))];
+    const selfies = await this.ctx.storage.get<number>(ids.map((id) => `selfie:${id}`));
+    return { type: "presence", people: ids.map((id) => ({ id, selfie: selfies.get(`selfie:${id}`) })) };
+  }
+
+  async broadcastPresence(leaving?: WebSocket) {
+    if (!(await this.features()).presence) return;
+    this.broadcast(await this.presence(leaving));
   }
 }
 

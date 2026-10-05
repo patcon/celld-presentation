@@ -4,7 +4,7 @@ import { SelfieButton } from "../components/SelfieButton";
 
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
-  const { features, react } = useDeck();
+  const { features, react } = useDeck({ audience: true });
   const anyEnabled = Object.values(features).some(Boolean);
 
   return (

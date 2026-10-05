@@ -37,6 +37,14 @@ body { margin: 0; }
 .selfie button:disabled { opacity: 0.6; }
 .selfie-error { margin: 0; color: #e5484d; }
 
+/* Presence: one circle per audience member down the right edge, wrapping leftwards into more columns. */
+/* `direction: rtl` makes each new column grow out to the left. */
+.presence { position: fixed; z-index: 2; top: 0; right: 0; bottom: 0; margin: 0; padding: 1rem; list-style: none; display: grid; grid-auto-flow: column; grid-template-rows: repeat(auto-fill, 3rem); align-content: start; gap: 0.5rem; direction: rtl; pointer-events: none; }
+.presence li { width: 3rem; height: 3rem; border-radius: 50%; overflow: hidden; background: hsl(var(--hue) 60% 55%); box-shadow: 0 0 0 2px Canvas; animation: arrive 0.3s ease-out; }
+.presence img { width: 100%; height: 100%; object-fit: cover; }
+@keyframes arrive { from { scale: 0; } }
+@media (prefers-reduced-motion: reduce) { .presence li { animation: none; } }
+
 /* Floating reactions, behind page content.
    `transform` applies inside `rotate`, so the rise follows the tilt and curves upright as it unwinds. */
 .reactions-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
@@ -67,6 +75,7 @@ body { margin: 0; }
 .terminal-line .from { flex-shrink: 0; width: 8ch; color: #d2a8ff; }
 .terminal-line .type { flex-shrink: 0; min-width: 8ch; color: #79c0ff; }
 .terminal-line .type-reaction { color: var(--accent); }
+.terminal-line .type-presence { color: #7ee787; }
 .terminal-line .type-open, .terminal-line .type-close { color: var(--term-dim); font-style: italic; }
 /* Column labels stay put while the log scrolls under them. */
 .terminal-header { position: sticky; top: 0; margin: 0 -1rem 0.5rem; padding: 0.5rem 1rem; background: var(--term-bg); border-bottom: 1px solid #30363d; }

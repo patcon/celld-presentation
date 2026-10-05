@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { slides } from "../content";
 import { useDeck } from "../useDeck";
 import { useFloatingReactions } from "../components/FloatingReactions";
+import { Presence } from "../components/Presence";
 
 const NEXT_KEYS = ["ArrowRight", "PageDown"];
 const PREV_KEYS = ["ArrowLeft", "PageUp"];
@@ -9,7 +10,7 @@ const PREV_KEYS = ["ArrowLeft", "PageUp"];
 // `/` is a passive display; `/present` is the same view with keyboard control.
 export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   const reactions = useFloatingReactions();
-  const { slide, goTo } = useDeck({ onReaction: reactions.add });
+  const { slide, goTo, features, people } = useDeck({ onReaction: reactions.add });
 
   useEffect(() => {
     if (!keyboard) return;
@@ -29,6 +30,7 @@ export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   return (
     <>
       {reactions.layer}
+      {features.presence && <Presence people={people} />}
       <main id="slide">
         {s.content ?? (
           <>

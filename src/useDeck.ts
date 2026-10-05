@@ -5,6 +5,7 @@ import {
   type ClientMessage,
   type Emoji,
   type Features,
+  type Person,
   type ServerMessage,
 } from "../shared/protocol";
 
@@ -31,17 +32,22 @@ export const DECK_SOCKET = {
 // Connects to the Deck Durable Object and tracks the shared presentation state.
 // partysocket reconnects automatically (e.g. after a phone wakes from sleep),
 // and the Deck re-sends full state on every connect.
-export function useDeck({ onReaction }: { onReaction?: (emoji: Emoji) => void } = {}) {
+// `audience` marks this client as someone to count in presence.
+export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji: Emoji) => void; audience?: boolean } = {}) {
   const [slide, setSlide] = useState(0);
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
+  const [people, setPeople] = useState<Person[]>([]);
 
   const socket = usePartySocket({
     ...DECK_SOCKET,
+    query: audience ? { role: "audience" } : undefined,
     onMessage(e) {
       const msg: ServerMessage = JSON.parse(e.data);
       if (msg.type === "state") {
         setSlide(msg.slide);
         setFeatures(msg.features);
+      } else if (msg.type === "presence") {
+        setPeople(msg.people);
       } else if (msg.type === "reaction") {
         onReaction?.(msg.emoji);
       }
@@ -53,6 +59,7 @@ export function useDeck({ onReaction }: { onReaction?: (emoji: Emoji) => void } 
   return {
     slide,
     features,
+    people,
     goTo: (slide: number) => send({ type: "goTo", slide }),
     toggle: (feature: keyof Features, on: boolean) => send({ type: "toggle", feature, on }),
     react: (emoji: Emoji) => send({ type: "react", emoji }),
