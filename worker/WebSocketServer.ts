@@ -42,6 +42,10 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
     await this.onClose(ws);
   }
 
+  async webSocketError(ws: WebSocket) {
+    await this.onClose(ws);
+  }
+
   send(ws: WebSocket, msg: Out) {
     ws.send(JSON.stringify(msg));
   }
