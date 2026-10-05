@@ -55,6 +55,12 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
     for (const ws of this.ctx.getWebSockets(tag)) ws.send(data);
   }
 
+  // Every socket the client has open, e.g. one per tab.
+  sendToClient(id: string, msg: Out) {
+    const data = JSON.stringify(msg);
+    for (const ws of this.ctx.getWebSockets()) if (this.clientId(ws) === id) ws.send(data);
+  }
+
   clientId(ws: WebSocket) {
     return (ws.deserializeAttachment() as Attachment).id;
   }

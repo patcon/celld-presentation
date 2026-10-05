@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { DECK_SOCKET } from "../useDeck";
+import { selfieUrl } from "../../shared/protocol";
 
 const SIZE = 384;
 
@@ -89,13 +90,13 @@ function Webcam({ onCapture, onCancel, onPickFile }: WebcamProps) {
   );
 }
 
-type Status = "idle" | "camera" | "uploading" | "done" | "error";
+type Status = "idle" | "camera" | "uploading" | "error";
 
 // Takes a selfie (native camera on phones, the webcam on desktop) and uploads it to the Deck's bucket.
-export function SelfieButton() {
+// `selfie` is when the Deck last stored one for this client, so it survives reloads and toggles.
+export function SelfieButton({ selfie }: { selfie?: number }) {
   const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>("idle");
-  const [preview, setPreview] = useState<string>();
 
   const upload = async (getJpeg: () => Promise<Blob>) => {
     setStatus("uploading");
@@ -107,18 +108,15 @@ export function SelfieButton() {
         body: jpeg,
       });
       if (!res.ok) throw new Error(await res.text());
-      setPreview((old) => {
-        if (old) URL.revokeObjectURL(old);
-        return URL.createObjectURL(jpeg);
-      });
-      setStatus("done");
+      // The Deck sends the new `selfie` time to this client before responding.
+      setStatus("idle");
     } catch {
       setStatus("error");
     }
   };
 
   const pickFile = () => {
-    setStatus(preview ? "done" : "idle");
+    setStatus("idle");
     input.current?.click();
   };
 
@@ -127,11 +125,11 @@ export function SelfieButton() {
       {status === "camera" ? (
         <Webcam
           onCapture={(jpeg) => upload(async () => jpeg)}
-          onCancel={() => setStatus(preview ? "done" : "idle")}
+          onCancel={() => setStatus("idle")}
           onPickFile={pickFile}
         />
       ) : (
-        preview && <img src={preview} alt="Your selfie" />
+        selfie && <img src={selfieUrl({ id: DECK_SOCKET.id, selfie })} alt="Your selfie" />
       )}
       <input
         ref={input}
@@ -147,7 +145,7 @@ export function SelfieButton() {
       />
       {status !== "camera" && (
         <button onClick={() => (streamWebcam() ? setStatus("camera") : pickFile())} disabled={status === "uploading"}>
-          {status === "uploading" ? "Sending…" : preview ? "📸 Retake selfie" : "📸 Take a selfie"}
+          {status === "uploading" ? "Sending…" : selfie ? "📸 Retake selfie" : "📸 Take a selfie"}
         </button>
       )}
       {status === "error" && <p className="selfie-error">That didn't send. Try again?</p>}

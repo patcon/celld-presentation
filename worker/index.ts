@@ -30,6 +30,9 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
 
   async onConnect(ws: WebSocket) {
     this.send(ws, await this.state());
+    // So a reload, or the feature coming back on, still shows their own selfie.
+    const selfie = await this.ctx.storage.get<number>(`selfie:${this.clientId(ws)}`);
+    if (selfie) this.send(ws, { type: "selfie", selfie });
     if (!(await this.features()).presence) return;
     // A new audience member changes the list for everyone; anyone else just needs a copy.
     if (this.hasTag(ws, AUDIENCE)) await this.broadcastPresence();
@@ -67,7 +70,9 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   async saveSelfie(id: string, image: ArrayBuffer): Promise<boolean> {
     if (!(await this.features()).selfies) return false;
     await this.env.SELFIES.put(selfieKey(id), image, { httpMetadata: { contentType: "image/jpeg" } });
-    await this.ctx.storage.put(`selfie:${id}`, Date.now());
+    const selfie = Date.now();
+    await this.ctx.storage.put(`selfie:${id}`, selfie);
+    this.sendToClient(id, { type: "selfie", selfie });
     await this.broadcastPresence();
     return true;
   }

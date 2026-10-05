@@ -4,14 +4,14 @@ import { SelfieButton } from "../components/SelfieButton";
 
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
-  const { features, react } = useDeck({ audience: true });
+  const { features, react, selfie } = useDeck({ audience: true });
   const anyEnabled = Object.values(features).some(Boolean);
 
   return (
     <>
       <main id="participation">
         {!anyEnabled && <p className="waiting">Hang tight — the presenter will open things up soon.</p>}
-        {features.selfies && <SelfieButton />}
+        {features.selfies && <SelfieButton selfie={selfie} />}
       </main>
       {features.reactions && (
         <nav className="reaction-bar">

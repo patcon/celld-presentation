@@ -37,6 +37,8 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
   const [slide, setSlide] = useState(0);
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
   const [people, setPeople] = useState<Person[]>([]);
+  // When this client last uploaded a selfie, if ever.
+  const [selfie, setSelfie] = useState<number>();
 
   const socket = usePartySocket({
     ...DECK_SOCKET,
@@ -48,6 +50,8 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
         setFeatures(msg.features);
       } else if (msg.type === "presence") {
         setPeople(msg.people);
+      } else if (msg.type === "selfie") {
+        setSelfie(msg.selfie);
       } else if (msg.type === "reaction") {
         onReaction?.(msg.emoji);
       }
@@ -60,6 +64,7 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
     slide,
     features,
     people,
+    selfie,
     goTo: (slide: number) => send({ type: "goTo", slide }),
     toggle: (feature: keyof Features, on: boolean) => send({ type: "toggle", feature, on }),
     react: (emoji: Emoji) => send({ type: "react", emoji }),
