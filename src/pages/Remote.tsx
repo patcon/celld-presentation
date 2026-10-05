@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import { slides } from "../content";
 import { useDeck } from "../useDeck";
 import { AudiencePreview } from "../components/AudiencePreview";
@@ -8,16 +8,38 @@ const FEATURE_LABELS: Record<keyof Features, string> = {
   reactions: "Reactions",
 };
 
+// The audience preview lives in the URL (`/remote?preview`), so it survives the phone
+// reloading the tab after a screen lock, and the back gesture closes it.
+const previewInUrl = () => new URLSearchParams(location.search).has("preview");
+
 export function Remote() {
   const { slide, goTo, features, toggle } = useDeck();
-  const [previewing, setPreviewing] = useState(false);
-  const closePreview = useCallback(() => setPreviewing(false), []);
+  const [previewing, setPreviewing] = useState(previewInUrl);
+
+  useEffect(() => {
+    const onPop = () => setPreviewing(previewInUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const openPreview = () => {
+    history.pushState({ preview: true }, "", "?preview");
+    setPreviewing(true);
+  };
+
+  const closePreview = () => {
+    // Step back to /remote if we pushed the entry; if the page was opened at ?preview, swap it out
+    // so closing doesn't leave the site.
+    if (history.state?.preview) return history.back();
+    history.replaceState(null, "", location.pathname);
+    setPreviewing(false);
+  };
 
   return (
     <div id="remote">
       <section>
         <h2>
-          <button className="heading-link" onClick={() => setPreviewing(true)} title="See what the audience sees">
+          <button className="heading-link" onClick={openPreview} title="See what the audience sees">
             Participation ⛶
           </button>
         </h2>
