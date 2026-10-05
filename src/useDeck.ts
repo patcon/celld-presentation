@@ -8,6 +8,12 @@ import {
   type ServerMessage,
 } from "../shared/protocol";
 
+// Where every client connects; shared so other views can open their own socket.
+export const DECK_SOCKET = {
+  basePath: "api/ws",
+  protocol: location.protocol === "https:" ? "wss" : "ws",
+} as const;
+
 // Connects to the Deck Durable Object and tracks the shared presentation state.
 // partysocket reconnects automatically (e.g. after a phone wakes from sleep),
 // and the Deck re-sends full state on every connect.
@@ -16,8 +22,7 @@ export function useDeck({ onReaction }: { onReaction?: (emoji: Emoji) => void } 
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
 
   const socket = usePartySocket({
-    basePath: "api/ws",
-    protocol: location.protocol === "https:" ? "wss" : "ws",
+    ...DECK_SOCKET,
     onMessage(e) {
       const msg: ServerMessage = JSON.parse(e.data);
       if (msg.type === "state") {
