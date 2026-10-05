@@ -48,7 +48,15 @@ body { margin: 0; }
 .presence li { width: 3rem; height: 3rem; border-radius: 50%; overflow: hidden; background: hsl(var(--hue) 60% 55%); box-shadow: 0 0 0 2px Canvas; animation: arrive 0.3s ease-out; }
 .presence img { width: 100%; height: 100%; object-fit: cover; }
 @keyframes arrive { from { scale: 0; } }
-@media (prefers-reduced-motion: reduce) { .presence li { animation: none; } }
+/* Arrival in reverse. A separate name, since changing just the direction wouldn't restart it. */
+.presence li.leaving { animation: depart 0.3s ease-in forwards; }
+@keyframes depart { to { scale: 0; } }
+/* Leavers still need an animation, or they'd never get removed; a fade will do. */
+@media (prefers-reduced-motion: reduce) {
+  .presence li { animation: none; }
+  .presence li.leaving { animation: vanish 0.3s forwards; }
+  @keyframes vanish { to { opacity: 0; } }
+}
 
 /* Floating reactions, behind page content.
    `transform` applies inside `rotate`, so the rise follows the tilt and curves upright as it unwinds. */
