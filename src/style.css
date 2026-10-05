@@ -36,6 +36,11 @@ body { margin: 0; }
 .selfie button { font: inherit; font-size: 1.2rem; padding: 0.75rem 1.5rem; border-radius: 999px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 20%, Canvas); color: CanvasText; cursor: pointer; }
 .selfie button:disabled { opacity: 0.6; }
 .selfie-error { margin: 0; color: #e5484d; }
+/* Mirrored like a mirror, and cropped to the circle the selfie will show in. */
+.webcam { display: grid; justify-items: center; gap: 1rem; }
+.webcam video { width: min(20rem, 80vw); aspect-ratio: 1; border-radius: 50%; object-fit: cover; scale: -1 1; background: #8882; }
+.webcam-buttons { display: flex; gap: 0.5rem; }
+.selfie button.secondary { border-color: #8884; background: Canvas; }
 
 /* Presence: one circle per audience member down the right edge, wrapping leftwards into more columns. */
 /* `direction: rtl` makes each new column grow out to the left. */
