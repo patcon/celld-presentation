@@ -1,8 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
+import { Hono } from "hono";
 
-interface Env {
+type Env = {
   DECK: DurableObjectNamespace<Deck>;
-}
+};
 
 // One Deck object holds the shared state for the whole presentation.
 // Every client (slides screen, presenter remote) connects to the same instance.
@@ -27,12 +28,8 @@ export class Deck extends DurableObject<Env> {
   }
 }
 
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname === "/api/ws") {
-      return env.DECK.getByName("main").fetch(request);
-    }
-    return new Response("Not found", { status: 404 });
-  },
-} satisfies ExportedHandler<Env>;
+const app = new Hono<{ Bindings: Env }>().basePath("/api");
+
+app.get("/ws", (c) => c.env.DECK.getByName("main").fetch(c.req.raw));
+
+export default app;
