@@ -1,5 +1,7 @@
+import { useCallback, useState } from "react";
 import { slides } from "../content";
 import { useDeck } from "../useDeck";
+import { AudiencePreview } from "../components/AudiencePreview";
 import type { Features } from "../../shared/protocol";
 
 const FEATURE_LABELS: Record<keyof Features, string> = {
@@ -8,13 +10,16 @@ const FEATURE_LABELS: Record<keyof Features, string> = {
 
 export function Remote() {
   const { slide, goTo, features, toggle } = useDeck();
+  const [previewing, setPreviewing] = useState(false);
+  const closePreview = useCallback(() => setPreviewing(false), []);
+
   return (
     <div id="remote">
       <section>
         <h2>
-          <a href="/participation" target="_blank" rel="noreferrer" title="Open the audience view">
-            Participation ↗
-          </a>
+          <button className="heading-link" onClick={() => setPreviewing(true)} title="See what the audience sees">
+            Participation ⛶
+          </button>
         </h2>
         {(Object.keys(FEATURE_LABELS) as (keyof Features)[]).map((f) => (
           <label key={f} className="toggle">
@@ -33,6 +38,7 @@ export function Remote() {
           ))}
         </ol>
       </section>
+      {previewing && <AudiencePreview onClose={closePreview} />}
     </div>
   );
 }
