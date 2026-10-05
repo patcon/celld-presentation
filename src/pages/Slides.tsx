@@ -9,7 +9,7 @@ const PREV_KEYS = ["ArrowLeft", "PageUp"];
 
 // `/` is a passive display; `/present` is the same view with keyboard control.
 export function Slides({ keyboard = false }: { keyboard?: boolean }) {
-  const reactions = useFloatingReactions();
+  const reactions = useFloatingReactions({ inFront: true });
   const { slide, goTo, features, people } = useDeck({ onReaction: reactions.add });
 
   useEffect(() => {

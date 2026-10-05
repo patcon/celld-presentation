@@ -9,8 +9,8 @@ let nextId = 0;
 
 const randomAngle = () => (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * 90);
 
-// Emoji that burst up from the bottom of the screen, layered behind page content.
-export function useFloatingReactions() {
+// Emoji that burst up from the bottom of the screen, behind page content or, with `inFront`, over it.
+export function useFloatingReactions({ inFront = false }: { inFront?: boolean } = {}) {
   const [floaters, setFloaters] = useState<Floater[]>([]);
 
   const add = useCallback((emoji: Emoji) => {
@@ -21,7 +21,7 @@ export function useFloatingReactions() {
   const remove = (id: number) => setFloaters((fs) => fs.filter((f) => f.id !== id));
 
   const layer = (
-    <div className="reactions-layer" aria-hidden>
+    <div className={inFront ? "reactions-layer in-front" : "reactions-layer"} aria-hidden>
       {floaters.map((f) => (
         <span
           key={f.id}

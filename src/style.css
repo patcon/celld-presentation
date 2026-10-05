@@ -78,9 +78,10 @@ body { margin: 0; }
   @keyframes vanish { to { opacity: 0; } }
 }
 
-/* Floating reactions, behind page content.
+/* Floating reactions, behind page content, or over it with .in-front (still under presence, which comes later).
    `transform` applies inside `rotate`, so the rise follows the tilt and curves upright as it unwinds. */
 .reactions-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+.reactions-layer.in-front { z-index: 2; }
 .floater { --rise: 30vh; position: absolute; bottom: 2rem; font-size: 3rem; line-height: 1; opacity: 0; animation: travel 2s ease-in-out forwards; }
 @keyframes travel {
   0%   { transform: translate(0, calc(var(--rise) * -0.625)); rotate: var(--starting-angle); scale: 0; opacity: 0; }
