@@ -1,16 +1,20 @@
 import { useCallback, useState } from "react";
 import type { Emoji } from "../../shared/protocol";
 
-type Floater = { id: number; emoji: Emoji; left: number; duration: number };
+// Motion adapted from https://github.com/patcon/nextjs-livestream-reaction-app:
+// each emoji starts tilted up to ±90°, swings upright as it grows and rises, then fades.
+type Floater = { id: number; emoji: Emoji; left: number; startingAngle: number };
 
 let nextId = 0;
 
-// Emoji that drift up from the bottom of the screen, layered behind page content.
+const randomAngle = () => (Math.random() < 0.5 ? 1 : -1) * Math.floor(Math.random() * 90);
+
+// Emoji that burst up from the bottom of the screen, layered behind page content.
 export function useFloatingReactions() {
   const [floaters, setFloaters] = useState<Floater[]>([]);
 
   const add = useCallback((emoji: Emoji) => {
-    const floater = { id: nextId++, emoji, left: 5 + Math.random() * 90, duration: 4 + Math.random() * 2 };
+    const floater = { id: nextId++, emoji, left: 10 + Math.random() * 80, startingAngle: randomAngle() };
     setFloaters((fs) => [...fs, floater]);
   }, []);
 
@@ -22,7 +26,7 @@ export function useFloatingReactions() {
         <span
           key={f.id}
           className="floater"
-          style={{ left: `${f.left}%`, animationDuration: `${f.duration}s` }}
+          style={{ left: `${f.left}%`, "--starting-angle": `${f.startingAngle}deg` } as React.CSSProperties}
           onAnimationEnd={() => remove(f.id)}
         >
           {f.emoji}

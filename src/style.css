@@ -24,14 +24,16 @@ body { margin: 0; }
 .reaction-bar button { font-size: 2rem; width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 1px solid #8884; background: Canvas; cursor: pointer; touch-action: manipulation; }
 .reaction-bar button:active { transform: scale(0.9); }
 
-/* Floating reactions, behind page content */
+/* Floating reactions, behind page content.
+   `transform` applies inside `rotate`, so the rise follows the tilt and curves upright as it unwinds. */
 .reactions-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
-.floater { position: absolute; bottom: -3rem; font-size: 2.5rem; animation: float-up linear forwards; }
-@keyframes float-up {
-  0%   { transform: translate(0, 0); opacity: 0; }
-  10%  { opacity: 0.9; }
-  50%  { transform: translate(1.5rem, -55vh); }
-  100% { transform: translate(-1rem, -110vh); opacity: 0; }
+.floater { --rise: 30vh; position: absolute; bottom: 2rem; font-size: 3rem; line-height: 1; opacity: 0; animation: travel 2s ease-in-out forwards; }
+@keyframes travel {
+  0%   { transform: translate(0, calc(var(--rise) * -0.625)); rotate: var(--starting-angle); scale: 0; opacity: 0; }
+  5%   { scale: 0.1; opacity: 0.2; }
+  40%  { scale: 0.3; opacity: 1; }
+  60%  { opacity: 1; }
+  100% { transform: translate(0, calc(var(--rise) * -1)); scale: 1.5; opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .floater { animation-name: fade-out; bottom: 10vh; }
