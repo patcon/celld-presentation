@@ -4,8 +4,8 @@ export const REACTION_EMOJIS = ["❤️", "👏", "🔥", "😂", "🤯", "🎉"
 export type Emoji = (typeof REACTION_EMOJIS)[number];
 
 // Participation features the presenter can toggle for /participation.
-export type Features = { reactions: boolean };
-export const DEFAULT_FEATURES: Features = { reactions: false };
+export type Features = { reactions: boolean; selfies: boolean };
+export const DEFAULT_FEATURES: Features = { reactions: false, selfies: false };
 
 export type ClientMessage =
   | { type: "goTo"; slide: number }

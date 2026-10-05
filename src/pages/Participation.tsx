@@ -1,5 +1,6 @@
 import { REACTION_EMOJIS } from "../../shared/protocol";
 import { useDeck } from "../useDeck";
+import { SelfieButton } from "../components/SelfieButton";
 
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
@@ -10,6 +11,7 @@ export function Participation() {
     <>
       <main id="participation">
         {!anyEnabled && <p className="waiting">Hang tight — the presenter will open things up soon.</p>}
+        {features.selfies && <SelfieButton />}
       </main>
       {features.reactions && (
         <nav className="reaction-bar">

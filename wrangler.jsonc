@@ -10,5 +10,6 @@
   "durable_objects": {
     "bindings": [{ "name": "DECK", "class_name": "Deck" }]
   },
+  "r2_buckets": [{ "binding": "SELFIES", "bucket_name": "celld-presentation-selfies" }],
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Deck"] }]
 }

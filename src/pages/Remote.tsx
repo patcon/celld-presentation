@@ -6,6 +6,7 @@ import type { Features } from "../../shared/protocol";
 
 const FEATURE_LABELS: Record<keyof Features, string> = {
   reactions: "Reactions",
+  selfies: "Selfies",
 };
 
 // The audience preview lives in the URL (`/remote?preview`), so it survives the phone
