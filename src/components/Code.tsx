@@ -81,7 +81,9 @@ const DURATION = matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 80
 // A code block that animates to its new contents whenever `code` changes.
 // Consecutive slides that each render a <Code> reuse the same instance,
 // so stepping through them moves the tokens rather than swapping the block.
-export function Code({ code, lang, file }: { code: string; lang: Lang; file?: string }) {
+// `fitTo` lists every step of the same file: the font and box are sized for the largest,
+// so they stay put while the code changes.
+export function Code({ code, lang, file, fitTo = [code] }: { code: string; lang: Lang; file?: string; fitTo?: string[] }) {
   const highlighter = useHighlighter();
   const [step, setStep] = useState<{ code: string; lang: Lang; from: KeyedTokensInfo; to: KeyedTokensInfo }>();
 
@@ -91,10 +93,12 @@ export function Code({ code, lang, file }: { code: string; lang: Lang; file?: st
     setStep({ code, lang, from, to });
   }
 
-  // The font is sized so the longest line and every line fit on screen (see style.css).
   // Magic Move ends the last line with a <br> too, so the block is one line taller.
-  const lines = parse(code).code.split("\n");
-  const size = { "--lines": lines.length + 1, "--cols": Math.max(...lines.map((l) => l.length)) } as CSSProperties;
+  const lines = fitTo.map((c) => parse(c).code.split("\n"));
+  const size = {
+    "--lines": Math.max(...lines.map((l) => l.length)) + 1,
+    "--cols": Math.max(...lines.flat().map((l) => l.length)),
+  } as CSSProperties;
 
   return (
     <figure className="code-slide" style={size}>

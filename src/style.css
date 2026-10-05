@@ -16,7 +16,9 @@ body { margin: 0; }
    and the rems leave room for padding and the caption. */
 .code-slide { margin: 0; text-align: left; --code-add: #2ea04333; --code-remove: #f8514933; --code-highlight: #8883; }
 .code-slide figcaption { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: clamp(0.8rem, 1.6vw, 1.2rem); opacity: 0.6; margin-bottom: 0.75rem; }
-.code-slide pre { margin: 0; padding: 1.5rem 2rem 1.5rem 3.5ch; border-radius: 12px; font: clamp(0.6rem, min((100vw - 9rem) / var(--cols) / 0.6, (100vh - 10rem) / var(--lines) / 1.5), 1.6rem)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--shiki-light-bg); color: var(--shiki-light); box-shadow: 0 0 0 1px #8883; }
+/* border-box: Magic Move pins the box's measured (outer) size while animating, so padding mustn't be added on top.
+   The min sizes hold the box at the largest step's size, so it doesn't resize between steps. */
+.code-slide pre { box-sizing: border-box; min-height: calc(var(--lines) * 1.5em + 3rem); min-width: calc(var(--cols) * 1ch + 3.5ch + 2rem); margin: 0; padding: 1.5rem 2rem 1.5rem 3.5ch; border-radius: 12px; font: clamp(0.6rem, min((100vw - 9rem) / var(--cols) / 0.6, (100vh - 10rem) / var(--lines) / 1.5), 1.6rem)/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--shiki-light-bg); color: var(--shiki-light); box-shadow: 0 0 0 1px #8883; }
 .code-slide .shiki-magic-move-item { position: relative; color: var(--shiki-light); background-color: var(--line-bg); filter: opacity(var(--dim)); }
 /* The +/- of a diff line hangs in the left padding, off its first token. */
 .code-slide .shiki-magic-move-item::before { content: var(--gutter); position: absolute; right: 100%; margin-right: 1.5ch; opacity: 0.6; }
