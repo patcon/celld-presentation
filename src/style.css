@@ -29,7 +29,8 @@ body { margin: 0; }
 .back-button { position: fixed; z-index: 11; top: calc(0.75rem + env(safe-area-inset-top)); left: 0.75rem; padding: 0.5rem 0.9rem; font: inherit; border-radius: 999px; border: 1px solid #8884; background: Canvas; color: CanvasText; cursor: pointer; }
 
 /* Participation */
-#participation { position: relative; z-index: 1; min-height: 100vh; display: grid; place-content: center; padding: 1rem; text-align: center; }
+/* Exactly one screen tall (dvh tracks the phone's visible area), so there's nothing to scroll. */
+#participation { position: relative; z-index: 1; min-height: 100dvh; box-sizing: border-box; display: grid; place-content: center; padding: 1rem; text-align: center; }
 .waiting { opacity: 0.6; font-size: 1.2rem; }
 .reaction-bar { position: fixed; z-index: 2; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; gap: 0.5rem; flex-wrap: wrap; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); }
 .reaction-bar button { font-size: 2rem; width: 3.5rem; height: 3.5rem; border-radius: 50%; border: 1px solid #8884; background: Canvas; cursor: pointer; touch-action: manipulation; }
