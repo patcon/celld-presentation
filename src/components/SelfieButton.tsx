@@ -27,14 +27,15 @@ async function fileToJpeg(file: File) {
   }
 }
 
-// Phones open their own camera app from a file input with `capture`, which beats anything in-page.
-// Desktop browsers ignore `capture` and show a file picker, so there we stream the webcam ourselves.
-// getUserMedia needs a secure context (localhost or https), so plain-http LAN addresses get the picker.
-const streamWebcam = () => !!navigator.mediaDevices?.getUserMedia && !matchMedia("(pointer: coarse)").matches;
+// We stream the camera ourselves, since only getUserMedia reliably picks the front one:
+// a file input's `capture="user"` is just a hint, which phones' camera apps (notably iOS) often ignore.
+// getUserMedia needs a secure context (localhost or https), so plain-http LAN addresses get the file
+// input instead, which opens the camera app on phones and a file picker on desktop.
+const streamCamera = () => !!navigator.mediaDevices?.getUserMedia;
 
 type WebcamProps = { onCapture: (jpeg: Blob) => void; onCancel: () => void; onPickFile: () => void };
 
-// A live, mirrored webcam preview cropped to the circle the selfie will appear in.
+// A live, mirrored front-camera preview cropped to the circle the selfie will appear in.
 function Webcam({ onCapture, onCancel, onPickFile }: WebcamProps) {
   const video = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState(false);
@@ -92,7 +93,7 @@ function Webcam({ onCapture, onCancel, onPickFile }: WebcamProps) {
 
 type Status = "idle" | "camera" | "uploading" | "error";
 
-// Takes a selfie (native camera on phones, the webcam on desktop) and uploads it to the Deck's bucket.
+// Takes a selfie with the front camera (or a chosen photo, without one) and uploads it to the Deck's bucket.
 // `selfie` is when the Deck last stored one for this client, so it survives reloads and toggles.
 export function SelfieButton({ selfie }: { selfie?: number }) {
   const input = useRef<HTMLInputElement>(null);
@@ -144,7 +145,7 @@ export function SelfieButton({ selfie }: { selfie?: number }) {
         }}
       />
       {status !== "camera" && (
-        <button onClick={() => (streamWebcam() ? setStatus("camera") : pickFile())} disabled={status === "uploading"}>
+        <button onClick={() => (streamCamera() ? setStatus("camera") : pickFile())} disabled={status === "uploading"}>
           {status === "uploading" ? "Sending…" : selfie ? "📸 Retake selfie" : "📸 Take a selfie"}
         </button>
       )}
