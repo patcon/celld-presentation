@@ -11,7 +11,11 @@ export function Remote() {
   return (
     <div id="remote">
       <section>
-        <h2>Canvas</h2>
+        <h2>
+          <a href="/participation" target="_blank" rel="noreferrer" title="Open the audience view">
+            Participation ↗
+          </a>
+        </h2>
         {(Object.keys(FEATURE_LABELS) as (keyof Features)[]).map((f) => (
           <label key={f} className="toggle">
             <input type="checkbox" checked={features[f]} onChange={(e) => toggle(f, e.target.checked)} />

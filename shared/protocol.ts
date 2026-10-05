@@ -3,7 +3,7 @@
 export const REACTION_EMOJIS = ["❤️", "👏", "🔥", "😂", "🤯", "🎉"] as const;
 export type Emoji = (typeof REACTION_EMOJIS)[number];
 
-// Participation features the presenter can toggle for /canvas.
+// Participation features the presenter can toggle for /participation.
 export type Features = { reactions: boolean };
 export const DEFAULT_FEATURES: Features = { reactions: false };
 

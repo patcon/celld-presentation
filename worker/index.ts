@@ -13,7 +13,7 @@ type Env = {
 };
 
 // One Deck object holds the shared state for the whole presentation.
-// Every client (slides screen, presenter remote, audience canvas) connects to the same instance.
+// Every client (slides screen, presenter remote, audience participation) connects to the same instance.
 export class Deck extends DurableObject<Env> {
   async fetch(request: Request): Promise<Response> {
     const pair = new WebSocketPair();
