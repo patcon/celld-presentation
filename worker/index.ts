@@ -1,4 +1,3 @@
-import { DurableObject } from "cloudflare:workers";
 import { Hono } from "hono";
 import {
   DEFAULT_FEATURES,
@@ -7,6 +6,7 @@ import {
   type Features,
   type ServerMessage,
 } from "../shared/protocol";
+import { WebSocketServer } from "./WebSocketServer";
 
 type Env = {
   DECK: DurableObjectNamespace<Deck>;
@@ -14,16 +14,12 @@ type Env = {
 
 // One Deck object holds the shared state for the whole presentation.
 // Every client (slides screen, presenter remote, audience participation) connects to the same instance.
-export class Deck extends DurableObject<Env> {
-  async fetch(request: Request): Promise<Response> {
-    const pair = new WebSocketPair();
-    this.ctx.acceptWebSocket(pair[1]);
-    pair[1].send(JSON.stringify(await this.state()));
-    return new Response(null, { status: 101, webSocket: pair[0] });
+export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
+  async onConnect(ws: WebSocket) {
+    this.send(ws, await this.state());
   }
 
-  async webSocketMessage(_ws: WebSocket, message: string | ArrayBuffer) {
-    const msg: ClientMessage = JSON.parse(message as string);
+  async onMessage(_ws: WebSocket, msg: ClientMessage) {
     switch (msg.type) {
       case "goTo":
         await this.ctx.storage.put("slide", msg.slide);
@@ -39,11 +35,6 @@ export class Deck extends DurableObject<Env> {
         if (!REACTION_EMOJIS.includes(msg.emoji)) return;
         return this.broadcast({ type: "reaction", emoji: msg.emoji });
     }
-  }
-
-  broadcast(msg: ServerMessage) {
-    const data = JSON.stringify(msg);
-    for (const socket of this.ctx.getWebSockets()) socket.send(data);
   }
 
   async state(): Promise<ServerMessage> {
