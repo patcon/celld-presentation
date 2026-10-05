@@ -48,6 +48,8 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
       if (msg.type === "state") {
         setSlide(msg.slide);
         setFeatures(msg.features);
+        // Presence updates stop while it's off, so the last list would be stale when it comes back.
+        if (!msg.features.presence) setPeople([]);
       } else if (msg.type === "presence") {
         setPeople(msg.people);
       } else if (msg.type === "selfie") {

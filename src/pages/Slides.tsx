@@ -30,7 +30,8 @@ export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   return (
     <>
       {reactions.layer}
-      {features.presence && <Presence people={people} />}
+      {/* Always mounted: turning presence off empties the list, so everyone animates out. */}
+      <Presence people={people} />
       <main id="slide">
         {s.content ?? (
           <>
