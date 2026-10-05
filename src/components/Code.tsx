@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { createHighlighterCore, type HighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import { ShikiMagicMoveRenderer } from "@shikijs/magic-move/react";
@@ -6,7 +6,7 @@ import { codeToKeyedTokens, syncTokenKeys, toKeyedTokens } from "@shikijs/magic-
 import type { KeyedTokensInfo } from "@shikijs/magic-move/types";
 import "@shikijs/magic-move/style.css";
 
-export type Lang = "ts" | "jsonc";
+export type Lang = "ts" | "tsx" | "jsonc";
 
 const THEMES = { light: "github-light", dark: "github-dark" };
 
@@ -14,7 +14,7 @@ const THEMES = { light: "github-light", dark: "github-dark" };
 let loaded: HighlighterCore | undefined;
 const loading = createHighlighterCore({
   themes: [import("shiki/themes/github-light.mjs"), import("shiki/themes/github-dark.mjs")],
-  langs: [import("shiki/langs/typescript.mjs"), import("shiki/langs/jsonc.mjs")],
+  langs: [import("shiki/langs/typescript.mjs"), import("shiki/langs/tsx.mjs"), import("shiki/langs/jsonc.mjs")],
   engine: createJavaScriptRegexEngine(),
 }).then((h) => (loaded = h));
 
@@ -27,8 +27,9 @@ function useHighlighter() {
 }
 
 // Shiki's notation markers, at the end of a line: `// [!code ++]`, `--`, `focus` or `highlight`.
+// In JSX, where `//` isn't a comment, write `{/* [!code ++] */}`.
 // Magic Move doesn't run Shiki transformers, so we strip them ourselves and style the tokens.
-const MARKER = /\s*\/\/\s*\[!code (\+\+|--|focus|highlight)\]\s*$/;
+const MARKER = /\s*(?:\/\/|\{?\/\*)\s*\[!code (\+\+|--|focus|highlight)\]\s*(?:\*\/\}?)?\s*$/;
 type Mark = "++" | "--" | "focus" | "highlight";
 
 function parse(source: string) {
@@ -90,8 +91,13 @@ export function Code({ code, lang, file }: { code: string; lang: Lang; file?: st
     setStep({ code, lang, from, to });
   }
 
+  // The font is sized so the longest line and every line fit on screen (see style.css).
+  // Magic Move ends the last line with a <br> too, so the block is one line taller.
+  const lines = parse(code).code.split("\n");
+  const size = { "--lines": lines.length + 1, "--cols": Math.max(...lines.map((l) => l.length)) } as CSSProperties;
+
   return (
-    <figure className="code-slide">
+    <figure className="code-slide" style={size}>
       {file && <figcaption>{file}</figcaption>}
       {step && <ShikiMagicMoveRenderer tokens={step.to} previous={step.from} options={{ duration: DURATION }} />}
     </figure>

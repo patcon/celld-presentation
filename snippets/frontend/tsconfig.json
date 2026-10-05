@@ -1,0 +1,6 @@
+// Editor-only: lets snippets resolve DOM and React types. Not part of `pnpm typecheck`,
+// since snippets may show simplified or past versions of the code.
+{
+  "extends": "../../tsconfig.json",
+  "include": ["."]
+}

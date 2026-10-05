@@ -3,11 +3,14 @@ import { JoinQrCode } from "./components/JoinQrCode";
 import { MessageLog } from "./components/MessageLog";
 import { Code } from "./components/Code";
 // Snippets are hand-written, simplified versions of the real code, not imported from it.
-import wrangler1 from "../snippets/wrangler-1.jsonc?raw";
-import wrangler2 from "../snippets/wrangler-2.jsonc?raw";
-import deck1 from "../snippets/deck-1.ts?raw";
-import deck2 from "../snippets/deck-2.ts?raw";
-import deck3 from "../snippets/deck-3.ts?raw";
+import wrangler1 from "../snippets/worker/wrangler-1.jsonc?raw";
+import wrangler2 from "../snippets/worker/wrangler-2.jsonc?raw";
+import deck1 from "../snippets/worker/deck-1.ts?raw";
+import deck2 from "../snippets/worker/deck-2.ts?raw";
+import deck3 from "../snippets/worker/deck-3.ts?raw";
+import slides1 from "../snippets/frontend/slides-1.tsx?raw";
+import slides2 from "../snippets/frontend/slides-2.tsx?raw";
+import slides3 from "../snippets/frontend/slides-3.tsx?raw";
 
 // A slide shows its title and body, or, if it has `content`, only that.
 // The title is always listed on /remote.
@@ -24,6 +27,9 @@ export const slides: Slide[] = [
   { title: "Code: getByName", content: <Code file="worker/index.ts" lang="ts" code={deck1} /> },
   { title: "Code: storing the slide", content: <Code file="worker/index.ts" lang="ts" code={deck2} /> },
   { title: "Code: calling it over RPC", content: <Code file="worker/index.ts" lang="ts" code={deck3} /> },
+  { title: "Code: fetching the slide", content: <Code file="src/Slides.tsx" lang="tsx" code={slides1} /> },
+  { title: "Code: changing the slide", content: <Code file="src/Slides.tsx" lang="tsx" code={slides2} /> },
+  { title: "Code: polling for changes", content: <Code file="src/Slides.tsx" lang="tsx" code={slides3} /> },
   { title: "Join in (QR code)", content: <JoinQrCode /> },
   { title: "Message log (terminal)", content: <MessageLog layout="wide" /> },
 ];
