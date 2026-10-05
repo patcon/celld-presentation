@@ -27,6 +27,7 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
         await this.ctx.storage.put("slide", msg.slide);
         return this.broadcast({ ...(await this.state()), from });
       case "toggle": {
+        if (!(msg.feature in DEFAULT_FEATURES)) return;
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, [msg.feature]: msg.on });
         return this.broadcast({ ...(await this.state()), from });
