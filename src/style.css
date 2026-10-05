@@ -1,6 +1,9 @@
 :root { color-scheme: light dark; font-family: system-ui, sans-serif; --accent: #f6821f; }
 /* No pull-to-refresh or scroll bounce: an accidental refresh drops the WebSocket mid-talk. */
 html, body { overscroll-behavior: none; }
+/* No blue flash on tap; buttons give their own feedback. Keyboard focus still shows a ring. */
+html { -webkit-tap-highlight-color: transparent; }
+button:focus:not(:focus-visible) { outline: none; }
 body { margin: 0; }
 
 /* Slides */
@@ -34,6 +37,7 @@ body { margin: 0; }
 .selfie { display: grid; justify-items: center; gap: 1rem; }
 .selfie img { width: 10rem; height: 10rem; border-radius: 50%; object-fit: cover; }
 .selfie button { font: inherit; font-size: 1.2rem; padding: 0.75rem 1.5rem; border-radius: 999px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 20%, Canvas); color: CanvasText; cursor: pointer; }
+.selfie button:active { transform: scale(0.96); }
 .selfie button:disabled { opacity: 0.6; }
 .selfie-error { margin: 0; color: #e5484d; }
 /* Mirrored like a mirror, and cropped to the circle the selfie will show in. */
