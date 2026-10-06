@@ -490,10 +490,7 @@ export function FleetDiagram() {
   return (
     <svg ref={fleet} className="fleet" viewBox="0 0 1200 864" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M0 0 10 5 0 10z" fill="context-stroke" />
-        </marker>
-        <marker id="arrow-small" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto">
+        <marker id="arrow-small" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
         </marker>
         {/* A packet's glow: a white-hot core fading out through amber, no filter needed. */}
@@ -622,7 +619,7 @@ export function FleetDiagram() {
       {/* The bucket: celld's source of truth, where any node can pick a cell up.
           Below the node, which the row of chips makes taller. */}
       <g transform="translate(0 28)">
-      <path className="sync" d="M80 488 V 568" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
+      <path className="sync" d="M80 488 V 562" markerStart="url(#arrow-small)" markerEnd="url(#arrow-small)" />
       <text x="96" y="530" className="caption start">
         replicates writes · restores on wake
       </text>
