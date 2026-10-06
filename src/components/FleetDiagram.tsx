@@ -17,7 +17,7 @@ const LEGEND: [Look, string, string][] = [
   ["inactive", "inactive", "only in the bucket"],
 ];
 
-type CellView = { id: string; cls: string; label: string; phase: string; look: Look; detail: string };
+type CellView = { id: string; cls: string; label: string; stub?: string; phase: string; look: Look; detail: string };
 
 const MB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const shortId = (id: string) => `${id.slice(0, 8)}…`;
@@ -40,9 +40,12 @@ function cellsOf(view: CelldView, nodeName: string | undefined): CellView[] {
       const binding = project.durableObjects.find((d) => d.class_name === cls)?.name;
       const phase = state.residents.includes(cell.id) ? "resident" : (pending.shift() ?? "not in memory");
       const look: Look = phase === "resident" ? "resident" : phase === "dormant" ? "dormant" : phase === "not in memory" ? "inactive" : "changing";
-      const label = names[cell.id] && binding ? `env.${binding}.getByName("${names[cell.id]}")` : shortId(hex);
+      const name = names[cell.id];
+      const label = name ? `name "${name}"` : shortId(hex);
+      // How the Worker addresses it: the stub it gets from the binding.
+      const stub = binding && (name ? `env.${binding}.getByName("${name}")` : `env.${binding}.get(${shortId(hex)})`);
       const detail = [cell.epoch !== undefined && `epoch ${cell.epoch}`, cell.logs && `${cell.logs} log files`].filter(Boolean).join(" · ");
-      return { id: cell.id, cls, label, phase, look, detail };
+      return { id: cell.id, cls, label, stub, phase, look, detail };
     });
 }
 
@@ -70,7 +73,7 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
 }
 
 // The cells' top edge, with a channel above it, below the worker, for the sockets.
-const CELL_TOP = 324;
+const CELL_TOP = 336;
 
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
@@ -450,6 +453,13 @@ export function FleetDiagram() {
         {nodeLine}
       </text>
 
+      {/* Each stub, from its chip in the Worker down to the cell it addresses.
+          Drawn first, so the sockets pass over them. */}
+      {shown.map(
+        (cell, i) =>
+          cell.stub && <path key={cell.id} className="stub-call" d={`M${100 + i * 330} 282 V ${CELL_TOP - 2}`} markerEnd="url(#arrow)" />,
+      )}
+
       {/* The node holds each socket and hands its frames to the cell, which
           sleeps through them while it hibernates (and wakes on the next one). */}
       {socketCell >= 0 &&
@@ -465,13 +475,28 @@ export function FleetDiagram() {
         <rect key={i} className="port" x={port - 4} y="152" width="8" height="8" rx="2" />
       ))}
 
-      <rect className="worker" x="60" y="228" width="980" height="44" rx="8" />
-      <text x="76" y="256" className="worker-label start">
+      <rect className="worker" x="60" y="228" width="980" height="62" rx="8" />
+      <text x="76" y="250" className="worker-label start">
         Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
       </text>
-      <text x="1024" y="256" className="worker-label end">
+      <text x="1024" y="250" className="worker-label end">
         isolates: {isolates?.stateless?.live ?? 0} stateless · {cellPool?.live ?? 0} cell{cellPool ? `, ${MB(cellPool.heap_bytes)} heap` : ""}
       </text>
+
+      {/* A stub is the Worker's handle on a cell: getByName() makes one
+          without contacting the cell, and calls on it (fetch() or RPC) go
+          to wherever that cell lives. */}
+      {shown.map(
+        (cell, i) =>
+          cell.stub && (
+            <g key={cell.id}>
+              <rect className="stub" x={76 + i * 330} y="260" width="268" height="22" rx="4" />
+              <text x={88 + i * 330} y="276" className="stub-label start">
+                {cell.stub}
+              </text>
+            </g>
+          ),
+      )}
 
       {cells.length === 0 ? (
         <text x="600" y="360" className="caption">
@@ -484,7 +509,6 @@ export function FleetDiagram() {
         clients.map(({ landing }, i) => (
           <rect key={i} className="port" x={landing - 4} y={CELL_TOP - 4} width="8" height="8" rx="2" />
         ))}
-      {cells.length > 0 && <path className="flow" d={`M210 272 V ${CELL_TOP - 2}`} markerEnd="url(#arrow)" />}
       {cells.length > 3 && (
         <text x="1140" y="458" className="caption end">
           +{cells.length - 3} more cells

@@ -48,7 +48,10 @@ body { margin: 0; }
 .fleet .worker { fill: color-mix(in srgb, CanvasText 9%, Canvas); stroke: #8884; }
 .fleet .worker-label { font-size: 15px; opacity: 0.85; }
 .fleet circle.client { fill: var(--accent); opacity: 0.85; transform-box: fill-box; transform-origin: center; animation: arrive 0.3s ease-out; }
-.fleet .flow { fill: none; stroke: var(--accent); stroke-width: 3; }
+/* A stub in the Worker, and the line to the cell it addresses. */
+.fleet .stub { fill: Canvas; stroke: #8888; stroke-width: 1.5; }
+.fleet .stub-label { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fleet .stub-call { fill: none; stroke: #888; stroke-width: 2; }
 /* Text that socket lines pass behind, outlined in the page colour. */
 .fleet .halo { paint-order: stroke; stroke: Canvas; stroke-width: 6px; stroke-linejoin: round; }
 /* A WebSocket: client to node stays up whatever the cell does; node to cell follows the cell's phase. */
