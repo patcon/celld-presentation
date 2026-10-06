@@ -42,7 +42,7 @@ export type SelfieMessage = { type: "selfie"; selfie?: number };
 export type SocketRole = "audience" | "screen" | "other";
 // Sent to slides screens whenever a socket opens or closes, for the fleet diagram to label its sockets.
 export type SocketsMessage = { type: "sockets"; sockets: { id: string; conn?: string; role: SocketRole }[] };
-// A call a Deck made on its SQLite database (`ctx.storage`) or an R2 bucket.
+// A call a Deck made on its SQLite database (`ctx.storage`'s key-value methods) or an R2 bucket.
 // Only sent under celld, to slides screens, for the fleet diagram.
 // `cell` is the object's id; `write` is whether the call can change anything.
 export type TraceEvent = {
@@ -52,7 +52,6 @@ export type TraceEvent = {
   op: string;
   write: boolean;
   keys?: string[];
-  sql?: string;
 };
 export type TraceMessage = { type: "trace"; events: TraceEvent[] };
 export type ServerMessage =

@@ -1,9 +1,9 @@
 import type { TraceEvent } from "../shared/protocol";
 
-// Reports each call a Durable Object makes on its SQLite database
-// (ctx.storage, including ctx.storage.sql) or on an R2 bucket, for the fleet
-// diagram to flash. It patches the objects in place, so the object's own code
-// keeps using ctx.storage and env as usual.
+// Reports each call a Durable Object makes on its SQLite database through
+// ctx.storage's key-value methods (not yet ctx.storage.sql), or on an R2
+// bucket, for the fleet diagram to flash. It patches the objects in place, so
+// the object's own code keeps using ctx.storage and env as usual.
 //
 // Only under celld, where ctx.storage is a plain JS object whose methods can be
 // replaced (see DurableObjectState in celld's js/harness.js). celld's own
@@ -45,12 +45,6 @@ export function traceCalls<Env>(ctx: DurableObjectState, env: Env, emit: Emit): 
   const cell = ctx.id.toString();
   const storage = ctx.storage as unknown as Record<string, unknown>;
   patch(storage, STORAGE_OPS, (op, [arg]) => ({ cell, store: "sqlite", op, write: !READS.includes(op), keys: keysOf(arg) }), emit);
-  patch(
-    ctx.storage.sql as unknown as Record<string, unknown>,
-    ["exec"],
-    (op, [query]) => ({ cell, store: "sqlite", op, write: !/^\s*(select|pragma|explain)\b/i.test(String(query)), sql: String(query) }),
-    emit,
-  );
 
   const traced = { ...(env as Record<string, unknown>) };
   for (const [binding, value] of Object.entries(traced)) {
