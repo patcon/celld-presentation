@@ -73,45 +73,96 @@ const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${
 
 const ROLE_ORDER: SocketRole[] = ["audience", "screen", "other"];
 
-const ZAP_LENGTH = 18;
-const ZAP_SPEED = 3; // diagram units per ms
-const ZAP_GAP_MS = 100; // per socket, so a stream of pointer moves doesn't smear
+const SVG_NS = "http://www.w3.org/2000/svg";
+const ZAP_SPEED = 2.6; // diagram units per ms
+const ZAP_GAP_MS = 100; // per socket, so a stream of pointer moves reads as a pulse
+// The comet: a bright head, then a streak of overlapping sparks tapering away
+// behind it. The streak is a few frames' travel long, so frame to frame it
+// overlaps itself and reads as one continuous trail rather than hops.
+const TAIL = 110;
+const SPARKS = 14;
+const COMET = Array.from({ length: SPARKS }, (_, k) => ({
+  behind: (k / (SPARKS - 1)) * TAIL,
+  r: 11 * (1 - 0.75 * (k / SPARKS)),
+  opacity: (1 - k / SPARKS) ** 1.6,
+}));
+// Mostly constant speed, easing off a little as it lands.
+const glide = (t: number) => 0.7 * t + 0.3 * (1 - (1 - t) ** 2);
 
-// A little zap along a socket, client to cell, for each message this screen
-// hears that someone else's message caused.
+// A packet zipping along a socket, client to cell, for each message this screen
+// hears that someone else's message caused. It follows the live line and hop,
+// so it stays on the wire even while an avatar tugs the dot, and lands with a ring.
 function useZaps(layer: React.RefObject<SVGGElement | null>) {
   useEffect(() => {
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const last = new Map<string, number>();
 
-    // A socket's whole route, client to node (its line, wherever its dot is) and node to cell.
-    const route = (dot: Element) => {
-      const i = dot.getAttribute("data-index");
-      const line = dot.querySelector("path.socket")?.getAttribute("d");
-      const hop = layer.current?.ownerSVGElement?.querySelector(`path.socket-hop[data-index="${i}"]`)?.getAttribute("d");
-      return line && `${line} ${hop ?? ""}`;
+    const spark = (tag: string, attrs: Record<string, string | number>) => {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, String(v));
+      return el;
+    };
+
+    const land = (x: number, y: number) => {
+      const ring = spark("circle", { class: "zap-ring", cx: x, cy: y, r: 7 });
+      layer.current?.append(ring);
+      ring
+        .animate(
+          [
+            { transform: "scale(0.4)", opacity: 1 },
+            { transform: "scale(2.2)", opacity: 0 },
+          ],
+          { duration: 320, easing: "cubic-bezier(0.2, 0.7, 0.3, 1)" },
+        )
+        .finished.finally(() => ring.remove());
     };
 
     const zap = (dot: Element) => {
-      const key = dot.getAttribute("data-index") ?? "";
+      const i = dot.getAttribute("data-index");
       const now = performance.now();
-      if (now - (last.get(key) ?? 0) < ZAP_GAP_MS) return;
-      last.set(key, now);
-      const d = route(dot);
-      if (!d || !layer.current) return;
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", d);
-      path.setAttribute("class", "zap");
-      layer.current.append(path);
-      const length = path.getTotalLength();
-      path.style.strokeDasharray = `${ZAP_LENGTH} ${length + ZAP_LENGTH}`;
-      path.style.strokeDashoffset = String(ZAP_LENGTH);
-      path
-        .animate([{ strokeDashoffset: ZAP_LENGTH }, { strokeDashoffset: -length }], {
-          duration: length / ZAP_SPEED,
-          easing: "ease-in",
-        })
-        .finished.finally(() => path.remove());
+      if (now - (last.get(i ?? "") ?? 0) < ZAP_GAP_MS) return;
+      last.set(i ?? "", now);
+      const line = dot.querySelector<SVGPathElement>("path.socket");
+      const hop = layer.current?.ownerSVGElement?.querySelector<SVGPathElement>(`path.socket-hop[data-index="${i}"]`);
+      if (!line || !layer.current) return;
+
+      const comet = spark("g", { class: "zap" });
+      // Head last, so it draws over its tail.
+      const sparks = [...COMET].reverse().map(({ r, opacity, behind }) => {
+        const el = spark("circle", { r, opacity, fill: "url(#zap-glow)", visibility: "hidden" });
+        comet.append(el);
+        return { el, behind };
+      });
+      layer.current.append(comet);
+
+      const at = (distance: number, toLine: number) =>
+        distance <= toLine || !hop ? line.getPointAtLength(distance) : hop.getPointAtLength(distance - toLine);
+      const start = performance.now();
+      let landed = false;
+      const frame = (now: number) => {
+        const toLine = line.getTotalLength();
+        const total = toLine + (hop?.getTotalLength() ?? 0);
+        // The head runs on past the end by a tail's length, so the trail drains into the cell.
+        const t = Math.min((now - start) / ((total + TAIL) / ZAP_SPEED), 1);
+        const head = (total + TAIL) * glide(t);
+        for (const { el, behind } of sparks) {
+          const d = head - behind;
+          // Sparks not yet out of the dot, or already into the cell, don't show.
+          el.style.visibility = d < 0 || d > total ? "hidden" : "visible";
+          if (d < 0 || d > total) continue;
+          const p = at(d, toLine);
+          el.setAttribute("cx", String(p.x));
+          el.setAttribute("cy", String(p.y));
+        }
+        if (!landed && head >= total) {
+          landed = true;
+          const end = at(total, toLine);
+          land(end.x, end.y);
+        }
+        if (t < 1) requestAnimationFrame(frame);
+        else comet.remove();
+      };
+      requestAnimationFrame(frame);
     };
 
     return onDeckMessage((msg) => {
@@ -228,6 +279,13 @@ export function FleetDiagram() {
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
         </marker>
+        {/* A packet's glow: a white-hot core fading out through amber, no filter needed. */}
+        <radialGradient id="zap-glow">
+          <stop offset="0" stopColor="#fff" />
+          <stop offset="0.25" stopColor="#fde68a" />
+          <stop offset="0.5" stopColor="#f59e0b" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#ea580c" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
       {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself. */}
