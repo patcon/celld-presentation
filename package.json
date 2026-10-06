@@ -7,7 +7,7 @@
     "wrangler:dev": "vite",
     "wrangler:dev:share": "SHARE=1 vite",
     "celld:build": "CELLD=1 vite build",
-    "celld:serve": "CELLD_IDLE_EVICT_S=10 celld dev --host --port 5173 --watch-ignore 'dist/celld_presentation/**'",
+    "celld:serve": "CELLD_IDLE_EVICT_S=10 CELLD_SHUTDOWN_TOTAL_MS=8000 celld dev --host --port 5173 --watch-ignore 'dist/celld_presentation/**'",
     "celld:dev": "pnpm celld:build && concurrently -k -n vite,celld,operator \"CELLD=1 vite build --watch\" \"pnpm celld:serve\" \"node scripts/celld-operator.ts\"",
     "celld:dev:share": "pnpm celld:build && concurrently -k -n vite,celld,operator,tunnel \"CELLD=1 vite build --watch\" \"pnpm celld:serve\" \"node scripts/celld-operator.ts\" \"node scripts/tunnel.ts http://localhost:5173\"",
     "celld:state": "node scripts/celld-state.ts",
