@@ -183,35 +183,63 @@ function useZaps(layer: React.RefObject<SVGGElement | null>) {
   }, [layer]);
 }
 
-// Beside a SQLite database or R2 bucket, flashing for each call a cell makes
-// on it: blue for a read, amber for a write. `target` is the cell's id for a
-// database, or the binding's name for an R2 bucket.
-function IoDot({ x, y, store, target }: { x: number; y: number; store: "sqlite" | "r2"; target: string }) {
-  return <circle className="io-dot" cx={x} cy={y} r="6" data-store={store} data-target={target} />;
+// Beside a SQLite database or R2 bucket: a dot that flashes blue for each
+// read a cell makes on it, and one beside it that flashes amber for each
+// write. `target` is the cell's id for a database, or the binding's name for
+// an R2 bucket.
+const IO_COLORS = { read: "#3b82f6", write: "#f59e0b" } as const;
+type IoKind = keyof typeof IO_COLORS;
+
+function IoDots({ x, y, store, target }: { x: number; y: number; store: "sqlite" | "r2"; target: string }) {
+  return (
+    <>
+      {(["read", "write"] as const).map((kind, i) => (
+        <circle key={kind} className="io-dot" cx={x - 14 + i * 14} cy={y} r="5" data-store={store} data-target={target} data-io={kind} />
+      ))}
+    </>
+  );
 }
 
-const IO_COLORS = { read: "#3b82f6", write: "#f59e0b" };
+function IoLegend({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      {(["read", "write"] as const).map((kind, i) => (
+        <g key={kind} transform={`translate(${i * 70} 0)`}>
+          <circle cy="-5" r="5" fill={IO_COLORS[kind]} />
+          <text x="10" className="caption start">
+            {kind}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
 
 function useIoFlashes(svg: React.RefObject<SVGSVGElement | null>) {
   useEffect(() => {
     const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const flash = (dot: SVGCircleElement, kind: IoKind) => {
+      // A newer call restarts the flash, so a burst of them doesn't pile up.
+      dot.getAnimations().forEach((animation) => animation.cancel());
+      const fill = IO_COLORS[kind];
+      dot.animate(
+        [
+          { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
+          { fill, opacity: 1, transform: "none", offset: 0.3 },
+          { opacity: 0.35, transform: "none" },
+        ],
+        { duration: 700, easing: "ease-out" },
+      );
+    };
     return onDeckMessage((msg) => {
       if (msg.type !== "trace") return;
       for (const event of msg.events) {
         const target = event.store === "r2" ? event.binding : event.cell;
-        const dot = svg.current?.querySelector<SVGCircleElement>(`.io-dot[data-store="${event.store}"][data-target="${target}"]`);
-        if (!dot) continue;
-        // A newer call restarts the flash, so a burst of them doesn't pile up.
-        dot.getAnimations().forEach((animation) => animation.cancel());
-        const fill = IO_COLORS[event.write ? "write" : "read"];
-        dot.animate(
-          [
-            { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
-            { fill, opacity: 1, transform: "none", offset: 0.3 },
-            { opacity: 0.35, transform: "none" },
-          ],
-          { duration: 700, easing: "ease-out" },
+        const kind: IoKind = event.write ? "write" : "read";
+        const dot = svg.current?.querySelector<SVGCircleElement>(
+          `.io-dot[data-store="${event.store}"][data-target="${target}"][data-io="${kind}"]`,
         );
+        if (dot) flash(dot, kind);
       }
     });
   }, [svg]);
@@ -433,15 +461,16 @@ export function FleetDiagram() {
         {bucket ? `${bucket.objects} objects · ${MB(bucket.bytes)}` : "contents unavailable"}
       </text>
       {/* Each cell's SQLite database, on the left, and the rest of the bucket on
-          the right. A dot flashes for each call the Deck makes on a database or
-          R2 bucket (see worker/trace.ts). */}
+          the right. Dots beside them flash for each read and write the Deck
+          makes on a database or R2 bucket (see worker/trace.ts). */}
+      {bucket && <IoLegend x={960} y={608} />}
       {bucket?.cells.slice(0, 2).map((cell, i) => {
         const [cls, hex = ""] = cell.id.split(":");
         const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
         const live = leases.some((l) => l.name === cell.owner && (l.expiresInMs ?? 0) > 0);
         return (
           <g key={cell.id} className={live ? undefined : "bucket-row-inactive"}>
-            <IoDot x={116} y={635 + i * 26} store="sqlite" target={hex} />
+            <IoDots x={116} y={635 + i * 26} store="sqlite" target={hex} />
             <text x="130" y={640 + i * 26} className="bucket-chip start">
               cells/{cls}:{shortId(hex)} · SQLite{at}
             </text>
@@ -463,7 +492,7 @@ export function FleetDiagram() {
           }),
         ].map(({ text, binding }, i) => (
           <g key={text}>
-            {binding && <IoDot x={646} y={635 + i * 26} store="r2" target={binding} />}
+            {binding && <IoDots x={646} y={635 + i * 26} store="r2" target={binding} />}
             <text x="660" y={640 + i * 26} className="bucket-chip start">
               {text}
             </text>
