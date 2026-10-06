@@ -4,7 +4,9 @@
 // deploy/, and R2 objects under r2/<bucket>/.
 import { DatabaseSync } from "node:sqlite";
 
-export type BucketCell = { id: string; owner?: string; epoch?: number; logs: number; bytes: number };
+// `latest` is the newest transaction of the cell's SQLite database in the
+// bucket: its epoch (one per activation) and transaction id within it.
+export type BucketCell = { id: string; owner?: string; epoch?: number; logs: number; bytes: number; latest?: { epoch: number; txid: number } };
 export type BucketNode = { name: string; addr?: string; expiresMs?: number; expiresInMs?: number; load?: Record<string, unknown> };
 
 export type Bucket = {
@@ -38,7 +40,16 @@ export function readBucket(store: string): Bucket {
         cells.set(name, cell);
         cell.bytes += size;
         if (key.endsWith("/own.json")) Object.assign(cell, { owner: read(key)?.node, epoch: read(key)?.epoch });
-        else if (key.endsWith(".ltx")) cell.logs++;
+        else if (key.endsWith(".ltx")) {
+          cell.logs++;
+          // ltx/e<epoch>/<level>/<first txid>-<last txid>.ltx, the ids in hex.
+          const ltx = key.match(/\/ltx\/e(\d+)\/\d+\/[0-9a-f]+-([0-9a-f]+)\.ltx$/);
+          const [epoch, txid] = ltx ? [Number(ltx[1]), parseInt(ltx[2], 16)] : [];
+          if (epoch !== undefined && txid !== undefined) {
+            const latest = cell.latest;
+            if (!latest || epoch > latest.epoch || (epoch === latest.epoch && txid > latest.txid)) cell.latest = { epoch, txid };
+          }
+        }
       } else if (prefix === "nodes" && name?.endsWith(".json")) {
         const lease = read(key);
         nodes.push({ name: lease?.node ?? name.slice(0, -5), addr: lease?.addr, expiresMs: lease?.expires_ms, load: lease?.load });

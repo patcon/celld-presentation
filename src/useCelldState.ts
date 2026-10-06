@@ -30,7 +30,7 @@ export type CelldView = {
     objects: number;
     bytes: number;
     nodes: { name: string; addr?: string; expiresInMs?: number }[];
-    cells: { id: string; owner?: string; epoch?: number; logs: number; bytes: number }[];
+    cells: { id: string; owner?: string; epoch?: number; logs: number; bytes: number; latest?: { epoch: number; txid: number } }[];
     deployments: { script: string; current?: string; versions: number }[];
     r2: { bucket: string; objects: number; bytes: number }[];
   };
