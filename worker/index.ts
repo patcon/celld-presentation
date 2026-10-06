@@ -9,6 +9,7 @@ import {
   type ServerMessage,
   type SocketsMessage,
   type StateMessage,
+  type TraceEvent,
 } from "../shared/protocol";
 import { WebSocketServer } from "./WebSocketServer";
 
@@ -56,6 +57,11 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     if ((await this.features()).main === "pointer") {
       this.broadcastExcept({ type: "pointer", at: null, from: this.clientId(ws), via: this.connectionId(ws) }, AUDIENCE);
     }
+  }
+
+  // Only the slides screens draw the fleet diagram.
+  onTrace(events: TraceEvent[]) {
+    this.broadcast({ type: "trace", events }, SCREEN);
   }
 
   async onMessage(ws: WebSocket, msg: ClientMessage) {
