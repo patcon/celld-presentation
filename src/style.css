@@ -32,14 +32,16 @@ body { margin: 0; }
 .join-qr { width: min(75vh, 75vw); height: auto; border-radius: 12px; }
 
 /* Remote */
-#remote { padding: 1rem; max-width: 40rem; margin: 0 auto; }
+/* One screen tall: the participation controls stay put up top, and only the slide list scrolls. */
+#remote { box-sizing: border-box; height: 100dvh; display: flex; flex-direction: column; padding: 1rem 1rem 0; max-width: 40rem; margin: 0 auto; }
+#remote .slide-list { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 #remote h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.6; }
 #remote .heading-link { all: unset; cursor: pointer; }
 #remote .heading-link:hover, #remote .heading-link:focus-visible { color: var(--accent); }
 .toggle { display: flex; align-items: center; gap: 0.75rem; padding: 1rem; border: 1px solid #8884; border-radius: 8px; font-size: 1.1rem; }
 .toggle input { width: 1.4rem; height: 1.4rem; accent-color: var(--accent); }
 .main-control { display: block; width: 100%; box-sizing: border-box; padding: 1rem; border: 1px solid #8884; border-radius: 8px; font: inherit; font-size: 1.1rem; background: Canvas; color: CanvasText; accent-color: var(--accent); }
-#slides { padding-left: 2rem; }
+#slides { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin: 0; padding: 0 0 calc(1rem + env(safe-area-inset-bottom)) 2rem; }
 #slides li { padding: 1rem; margin-bottom: 0.5rem; border: 1px solid #8884; border-radius: 8px; cursor: pointer; }
 #slides li.current { background: color-mix(in srgb, var(--accent) 20%, transparent); border-color: var(--accent); }
 

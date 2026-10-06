@@ -69,7 +69,7 @@ export function Remote() {
           </label>
         ))}
       </section>
-      <section>
+      <section className="slide-list">
         <h2>Slides</h2>
         <ol id="slides">
           {slides.map((s, i) => (
