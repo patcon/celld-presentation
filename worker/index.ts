@@ -9,11 +9,14 @@ import {
   type ServerMessage,
   type SocketsMessage,
   type StateMessage,
+  type TraceEvent,
 } from "../shared/protocol";
+import { DurableObject } from "cloudflare:workers";
 import { WebSocketServer } from "./WebSocketServer";
 
 type Env = {
   DECK: DurableObjectNamespace<Deck>;
+  DUMMY: DurableObjectNamespace<Dummy>;
   SELFIES: R2Bucket;
   ASSETS: Fetcher;
 };
@@ -56,6 +59,11 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     if ((await this.features()).main === "pointer") {
       this.broadcastExcept({ type: "pointer", at: null, from: this.clientId(ws), via: this.connectionId(ws) }, AUDIENCE);
     }
+  }
+
+  // Only the slides screens draw the fleet diagram.
+  onTrace(events: TraceEvent[]) {
+    this.broadcast({ type: "trace", events }, SCREEN);
   }
 
   async onMessage(ws: WebSocket, msg: ClientMessage) {
@@ -152,9 +160,25 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   }
 }
 
+// A stand-in for a second kind of cell, only to see how one renders in the
+// fleet diagram. Each activation counts itself, so it writes to its database.
+export class Dummy extends DurableObject<Env> {
+  async activate() {
+    const activations = ((await this.ctx.storage.get<number>("activations")) ?? 0) + 1;
+    await this.ctx.storage.put("activations", activations);
+    return activations;
+  }
+}
+
 const app = new Hono<{ Bindings: Env }>().basePath("/api");
 
 app.get("/ws", (c) => c.env.DECK.getByName("main").fetch(c.req.raw));
+
+// Activates dummy-1 (through dummy-9), by name, so it's the same cell each time.
+app.post("/dummies/:n{[1-9]}", async (c) => {
+  const activations = await c.env.DUMMY.getByName(`dummy-${c.req.param("n")}`).activate();
+  return c.json({ activations });
+});
 
 // The audience uploads a selfie as a JPEG, keyed by their client id (there's no auth, by design).
 app.put("/selfies/:id", async (c) => {
@@ -190,8 +214,16 @@ app.get("/celld/state", async (c) => {
     const res = await fetch(`${CELLD_OPERATOR}/state`);
     if (res.ok) {
       // celld knows a cell only by its id; name the ones this worker gets by name.
-      const names = { [`Deck:${c.env.DECK.idFromName("main")}`]: "main" };
-      return c.json({ ...(await res.json<object>()), names }, 200, { "Cache-Control": "no-store" });
+      const names = {
+        [`Deck:${c.env.DECK.idFromName("main")}`]: "main",
+        ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`Dummy:${c.env.DUMMY.idFromName(`dummy-${i + 1}`)}`, `dummy-${i + 1}`])),
+      };
+      // The classes that report their own storage and R2 calls (see trace.ts);
+      // the diagram falls back to watching the bucket for the rest.
+      const traced = Object.entries({ Deck, Dummy })
+        .filter(([, cls]) => cls.prototype instanceof WebSocketServer)
+        .map(([name]) => name);
+      return c.json({ ...(await res.json<object>()), names, traced }, 200, { "Cache-Control": "no-store" });
     }
   } catch {}
   return c.json({ error: "celld state is unavailable" }, 503);

@@ -1,4 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
+import type { TraceEvent } from "../shared/protocol";
+import { batched, traceCalls, underCelld } from "./trace";
 
 // Stored on each socket, so it survives hibernation.
 // `id` is the client's (shared by its tabs); `conn` is this one socket's own.
@@ -7,12 +9,21 @@ type Attachment = { id: string; conn?: string };
 // A Durable Object that speaks JSON over hibernatable WebSockets.
 // Subclasses implement the on* hooks and call send/broadcast.
 export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    // Under celld, every call this object makes on its SQLite database or an
+    // R2 bucket goes to onTrace, for the fleet diagram (see trace.ts).
+    // ctx.storage and this.env are patched in place, so subclasses use them as usual.
+    if (underCelld(ctx)) this.env = traceCalls(ctx, env, batched((events) => this.onTrace(events)));
+  }
+
   tags(_request: Request): string[] {
     return [];
   }
   onConnect(_ws: WebSocket): void | Promise<void> {}
   abstract onMessage(ws: WebSocket, msg: In): void | Promise<void>;
   onClose(_ws: WebSocket): void | Promise<void> {}
+  onTrace(_events: TraceEvent[]): void {}
 
   async fetch(request: Request) {
     if (request.headers.get("Upgrade") !== "websocket") {

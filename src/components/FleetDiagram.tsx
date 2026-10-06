@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCelldState, type CelldView } from "../useCelldState";
 import { registerAnchor } from "../tether";
 import { onDeckMessage, useDeckSockets } from "../useDeck";
@@ -17,7 +17,7 @@ const LEGEND: [Look, string, string][] = [
   ["inactive", "inactive", "only in the bucket"],
 ];
 
-type CellView = { id: string; cls: string; label: string; phase: string; look: Look; detail: string };
+type CellView = { id: string; cls: string; label: string; stub?: string; phase: string; look: Look; detail: string };
 
 const MB = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 const shortId = (id: string) => `${id.slice(0, 8)}…`;
@@ -40,9 +40,12 @@ function cellsOf(view: CelldView, nodeName: string | undefined): CellView[] {
       const binding = project.durableObjects.find((d) => d.class_name === cls)?.name;
       const phase = state.residents.includes(cell.id) ? "resident" : (pending.shift() ?? "not in memory");
       const look: Look = phase === "resident" ? "resident" : phase === "dormant" ? "dormant" : phase === "not in memory" ? "inactive" : "changing";
-      const label = names[cell.id] && binding ? `env.${binding}.getByName("${names[cell.id]}")` : shortId(hex);
+      const name = names[cell.id];
+      const label = name ? `name "${name}"` : shortId(hex);
+      // How the Worker addresses it: the stub it gets from the binding.
+      const stub = binding && (name ? `env.${binding}.getByName("${name}")` : `env.${binding}.get(${shortId(hex)})`);
       const detail = [cell.epoch !== undefined && `epoch ${cell.epoch}`, cell.logs && `${cell.logs} log files`].filter(Boolean).join(" · ");
-      return { id: cell.id, cls, label, phase, look, detail };
+      return { id: cell.id, cls, label, stub, phase, look, detail };
     });
 }
 
@@ -64,6 +67,29 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
       </text>
       <text x="16" y="106" className="cell-id start">
         {cell.id.length > 34 ? `${cell.id.slice(0, 34)}…` : cell.id}
+      </text>
+    </g>
+  );
+}
+
+// The cells' top edge, with a channel above it, below the worker, for the sockets.
+const CELL_TOP = 336;
+const CHANNEL_TOP = 298;
+const CHANNEL = CELL_TOP - 24 - CHANNEL_TOP;
+
+// How many cells' databases the bucket lists before it sums up the rest.
+const BUCKET_ROWS = 6;
+
+// A cell past the three drawn in full: its class, in its state's look.
+const CHIP_TOP = 476;
+
+function CellChip({ cell, x, y, width }: { cell: CellView; x: number; y: number; width: number }) {
+  return (
+    <g className={`cell cell-${cell.look}`} transform={`translate(${x} ${y})`}>
+      <title>{`${cell.label} · ${cell.phase}`}</title>
+      <rect width={width} height="22" rx="6" />
+      <text x={width / 2} y="16" className="cell-chip">
+        {cell.cls}
       </text>
     </g>
   );
@@ -183,6 +209,149 @@ function useZaps(layer: React.RefObject<SVGGElement | null>) {
   }, [layer]);
 }
 
+// Beside a SQLite database or R2 bucket: a dot that flashes blue for each
+// read a cell makes on it, and one beside it that flashes amber for each
+// write. `target` is the cell's id for a database, or the binding's name for
+// an R2 bucket.
+const IO_COLORS = { read: "#3b82f6", write: "#f59e0b" } as const;
+type IoKind = keyof typeof IO_COLORS;
+
+function IoDots({ x, y, store, target }: { x: number; y: number; store: "sqlite" | "r2"; target: string }) {
+  return (
+    <>
+      {(["read", "write"] as const).map((kind, i) => (
+        <circle key={kind} className="io-dot" cx={x - 14 + i * 14} cy={y} r="5" data-store={store} data-target={target} data-io={kind} />
+      ))}
+    </>
+  );
+}
+
+// Laid out like a row of IoDots and its text, so it lines up under them.
+function IoLegend({ x, y }: { x: number; y: number }) {
+  return (
+    <g>
+      {(["read", "write"] as const).map((kind, i) => (
+        <circle key={kind} cx={x - 14 + i * 14} cy={y - 5} r="5" fill={IO_COLORS[kind]} />
+      ))}
+      <text x={x + 14} y={y} className="caption start">
+        read / write
+      </text>
+    </g>
+  );
+}
+
+function flash(dot: SVGCircleElement, kind: IoKind) {
+  // A newer call restarts the flash, so a burst of them doesn't pile up.
+  dot.getAnimations().forEach((animation) => animation.cancel());
+  const fill = IO_COLORS[kind];
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  dot.animate(
+    [
+      { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
+      { fill, opacity: 1, transform: "none", offset: 0.3 },
+      { opacity: 0.35, transform: "none" },
+    ],
+    { duration: 700, easing: "ease-out" },
+  );
+}
+
+const ioDot = (svg: SVGSVGElement | null, store: "sqlite" | "r2", target: string | undefined, kind: IoKind) =>
+  svg?.querySelector<SVGCircleElement>(`.io-dot[data-store="${store}"][data-target="${target}"][data-io="${kind}"]`);
+
+// Flashes the calls a traced cell reports as it makes them.
+function useIoFlashes(svg: React.RefObject<SVGSVGElement | null>) {
+  useEffect(
+    () =>
+      onDeckMessage((msg) => {
+        if (msg.type !== "trace") return;
+        for (const event of msg.events) {
+          const kind: IoKind = event.write ? "write" : "read";
+          const dot = ioDot(svg.current, event.store, event.store === "r2" ? event.binding : event.cell, kind);
+          if (dot) flash(dot, kind);
+        }
+      }),
+    [svg],
+  );
+}
+
+// A cell that doesn't report its calls only shows up in the bucket, so flash
+// its database's write dot when a newer transaction lands there: a commit,
+// seen up to a poll late, rather than each call.
+//
+// This simplifies replication on purpose. One flash stands for whatever
+// changed the newest epoch and transaction between two polls: several
+// commits, or the first commit of a new epoch after the cell woke. It's the
+// same dot as a write call, though it's a different event, and snapshots and
+// whatever else celld writes for a cell don't show at all.
+function useCommitFlashes(svg: React.RefObject<SVGSVGElement | null>, view: CelldView | null) {
+  const seen = useRef<Map<string, string>>(undefined);
+  useEffect(() => {
+    if (!view?.bucket) return;
+    // The first poll only sets where each database starts from; after that, a
+    // database new to the bucket flashes for its first transaction too.
+    const first = !seen.current;
+    seen.current ??= new Map();
+    for (const cell of view.bucket.cells) {
+      const [cls, hex = ""] = cell.id.split(":");
+      const latest = cell.latest && `${cell.latest.epoch}:${cell.latest.txid}`;
+      const before = seen.current.get(cell.id);
+      if (latest) seen.current.set(cell.id, latest);
+      if (first || !latest || before === latest || view.traced?.includes(cls)) continue;
+      const dot = ioDot(svg.current, "sqlite", hex, "write");
+      if (dot) flash(dot, "write");
+    }
+  }, [svg, view]);
+}
+
+// A little red button that sends a request when pressed, as a client would,
+// so it can sit beside whatever that request wakes up.
+function RequestButton({ x, y, label, method, url }: { x: number; y: number; label: string; method: string; url: string }) {
+  const [busy, setBusy] = useState(false);
+  const send = () => {
+    if (busy) return;
+    setBusy(true);
+    fetch(url, { method })
+      .catch(() => {})
+      .finally(() => setBusy(false));
+  };
+  return (
+    <g
+      className={`request-button${busy ? " busy" : ""}`}
+      transform={`translate(${x} ${y})`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${method} ${url}`}
+      onClick={send}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        send();
+      }}
+    >
+      <circle r="10" />
+      <text y="5">{label}</text>
+    </g>
+  );
+}
+
+// An HTTP route the Worker serves, with buttons to call it.
+function RouteChip({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect className="route" width="458" height="30" rx="6" />
+      <text x="12" y="20" className="route-label start">
+        <tspan className="route-method">POST</tspan> /api/dummies/{"{:number}"}
+      </text>
+      <text x="252" y="20" className="caption start">
+        activate
+      </text>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <RequestButton key={n} x={304 + n * 26} y={15} label={String(n)} method="POST" url={`/api/dummies/${n}`} />
+      ))}
+    </g>
+  );
+}
+
 // A client at the far end of one of the node's sockets, tagged with its client
 // id. For an audience member, src/tether.ts pulls their presence circle over to
 // it, and moves it (and its line) as the two meet. A slides screen gets a screen icon.
@@ -243,15 +412,18 @@ export function FleetDiagram() {
   // celld only counts sockets; the Deck says whose each is, and the dots take them in turn.
   const zaps = useRef<SVGGElement>(null);
   useZaps(zaps);
+  const fleet = useRef<SVGSVGElement>(null);
+  useIoFlashes(fleet);
+  useCommitFlashes(fleet, view);
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
-      <svg className="fleet" viewBox="0 0 1200 720" role="img" aria-label="celld state unavailable">
-        <rect className="fleet-frame" x="20" y="20" width="1160" height="680" rx="16" />
-        <text x="600" y="350" className="node-name">
+      <svg className="fleet" viewBox="0 0 1200 864" role="img" aria-label="celld state unavailable">
+        <rect className="fleet-frame" x="20" y="20" width="1160" height="824" rx="16" />
+        <text x="600" y="422" className="node-name">
           No celld node to show
         </text>
-        <text x="600" y="385" className="caption">
+        <text x="600" y="457" className="caption">
           Run the deck with `pnpm celld:dev` to see its fleet, live.
         </text>
       </svg>
@@ -263,7 +435,6 @@ export function FleetDiagram() {
   const live = leases.filter((lease) => (lease.expiresInMs ?? 0) > 0);
   const lease = leases.find((l) => l.name === node.name);
   const cells = cellsOf(view, node.name);
-  const inactive = (bucket?.cells ?? []).filter((cell) => !live.some((l) => l.name === cell.owner)).length;
   const sockets = state.node_load.host_websockets;
   // /state only counts the node's sockets, so they all go to the cell the deck
   // gets by name (the only one that accepts WebSockets), or else the one cell in memory.
@@ -272,18 +443,39 @@ export function FleetDiagram() {
     shown.findIndex((cell) => view.names[cell.id]),
     shown.findIndex((cell) => cell.look !== "inactive"),
   );
-  // Each socket enters the node through its own port in a lane down the node's
-  // right edge, clear of its text, and turns into the cell's side.
+  // Each socket enters the node through its own port by the node's top-right
+  // corner, runs down past the worker and along the channel above the cells,
+  // and drops into its own port by the cell's top-right corner. The rightmost
+  // socket turns lowest and lands rightmost, so none of them cross. The turns
+  // spread evenly down the channel between the worker and the cells.
   const n = Math.min(sockets, 14);
   const lane = Math.min(34, 80 / Math.max(1, n - 1));
+  const cellRight = 60 + socketCell * 330 + 300;
   const clients = Array.from({ length: n }, (_, i) => ({
     x: 1140 - i * 34,
     port: 1140 - i * lane,
-    landing: 400 - i * (82 / Math.max(1, n - 1)),
+    channel: n === 1 ? CHANNEL_TOP + CHANNEL / 2 : CHANNEL_TOP + (CHANNEL * (n - 1 - i)) / (n - 1),
+    landing: cellRight - 20 - i * lane,
   }));
-  const cellSide = 60 + socketCell * 330 + 300;
+  // The cells past the first three, as small chips in a row under them,
+  // right-aligned with the last; as many as fit.
+  const rest = cells.slice(3);
+  const chips: { cell: CellView; x: number; width: number }[] = [];
+  for (let right = 1020; chips.length < rest.length; ) {
+    const cell = rest[chips.length];
+    const width = Math.max(60, cell.cls.length * 10 + 24);
+    if (right - width < 160) break;
+    chips.push({ cell, x: right - width, width });
+    right -= width + 8;
+  }
   const isolates = state.deployment?.isolates;
   const cellPool = isolates?.cells?.[project.name];
+  const workerIsolates = isolates?.stateless?.live ?? 0;
+  // The cells running in memory share the cell isolate; a dormant cell has
+  // left it, and once none are left celld retires it. Outlined from the first
+  // such cell to the last, so it takes in any between them too.
+  const inIsolate = shown.flatMap((cell, i) => (cell.look === "resident" || cell.look === "changing" ? [i] : []));
+  const isolateBox = cellPool?.live && inIsolate.length > 0 && { from: Math.min(...inIsolate), to: Math.max(...inIsolate) };
   const deployment = bucket?.deployments.find((d) => d.script === project.name);
 
   const nodeLine = [
@@ -296,9 +488,9 @@ export function FleetDiagram() {
     .join(" · ");
 
   return (
-    <svg className="fleet" viewBox="0 0 1200 720" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
+    <svg ref={fleet} className="fleet" viewBox="0 0 1200 864" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <marker id="arrow-small" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
         </marker>
         {/* A packet's glow: a white-hot core fading out through amber, no filter needed. */}
@@ -321,7 +513,7 @@ export function FleetDiagram() {
       {/* Legend */}
       <g className="legend" transform="translate(40 22)">
         {LEGEND.map(([look, name, label], i) => (
-          <g key={look} className={`cell cell-${look}`} transform={`translate(${(i % 2) * 280} ${Math.floor(i / 2) * 44})`}>
+          <g key={look} className={`cell cell-${look}`} transform={`translate(${(i % 2) * 280} ${Math.floor(i / 2) * 36})`}>
             <rect width="28" height="28" rx="6" />
             <text x="38" y="20" className="legend-label start">
               <tspan className="legend-state">{name}</tspan> {label}
@@ -330,13 +522,16 @@ export function FleetDiagram() {
         ))}
       </g>
 
+      {/* Routes the Worker serves, which a client calls over HTTP. */}
+      <RouteChip x={40} y={98} />
+
       {/* The fleet, as the bucket's node leases describe it. */}
-      <rect className="fleet-frame" x="20" y="140" width="1160" height="340" rx="16" />
-      <text x="36" y="130" className="caption start">
+      <rect className="fleet-frame" x="20" y="140" width="1160" height="388" rx="16" />
+      <text x="36" y="145" className="caption start halo">
         fleet · {live.length} live node{live.length === 1 ? "" : "s"}
         {leases.length > live.length ? ` (+${leases.length - live.length} expired)` : ""} · celld {version}
       </text>
-      <rect className="node" x="40" y="156" width="1120" height="308" rx="12" />
+      <rect className="node" x="40" y="156" width="1120" height="356" rx="12" />
       <text x="60" y="190" className="node-name start">
         node {node.name}
       </text>
@@ -347,70 +542,144 @@ export function FleetDiagram() {
         {nodeLine}
       </text>
 
+      <rect className="worker" x="60" y="228" width="980" height="62" rx="8" />
+      <text x="76" y="250" className="worker-label start">
+        Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
+      </text>
+      <text x="1024" y="250" className="worker-label end">
+        {workerIsolates === 0 ? "no isolate running" : `runs in ${workerIsolates} isolate${workerIsolates === 1 ? "" : "s"}`}
+      </text>
+
+      {/* A stub is the Worker's handle on a cell: getByName() makes one
+          without contacting the cell, and calls on it (fetch() or RPC) go
+          to wherever that cell lives. */}
+      {shown.map(
+        (cell, i) =>
+          cell.stub && (
+            <g key={cell.id}>
+              <rect className="stub" x={76 + i * 330} y="260" width="268" height="22" rx="4" />
+              <text x={88 + i * 330} y="276" className="stub-label start">
+                {cell.stub}
+              </text>
+            </g>
+          ),
+      )}
+
+      {isolateBox && (
+        <g className="isolate">
+          <rect x={50 + isolateBox.from * 330} y={CELL_TOP - 8} width={(isolateBox.to - isolateBox.from) * 330 + 320} height="134" rx="18" />
+          <text x={50 + isolateBox.to * 330 + 300} y={CELL_TOP + 131} className="caption end halo">
+            {cellPool.live === 1 ? "isolate" : `${cellPool.live} isolates`} · {MB(cellPool.heap_bytes)} memory
+          </text>
+        </g>
+      )}
+
+      {/* Each stub, from its chip in the Worker down to the cell it addresses.
+          Drawn before the sockets, so they pass over them. */}
+      {shown.map(
+        (cell, i) =>
+          cell.stub && <path key={cell.id} className="stub-call" d={`M${100 + i * 330} 282 V ${CELL_TOP - 1}`} markerEnd="url(#arrow-small)" />,
+      )}
+
       {/* The node holds each socket and hands its frames to the cell, which
           sleeps through them while it hibernates (and wakes on the next one). */}
       {socketCell >= 0 &&
-        clients.map(({ port, landing }, i) => (
+        clients.map(({ port, channel, landing }, i) => (
           <path
             key={i}
             data-index={i}
             className={`socket-hop hop-${shown[socketCell].look}`}
-            d={`M${port} 156 V ${landing - 16} Q ${port} ${landing}, ${port - 16} ${landing} H ${cellSide}`}
+            d={`M${port} 156 V ${channel - 8} Q ${port} ${channel}, ${port - 8} ${channel} H ${landing + 8} Q ${landing} ${channel}, ${landing} ${channel + 8} V ${CELL_TOP}`}
           />
         ))}
       {clients.map(({ port }, i) => (
         <rect key={i} className="port" x={port - 4} y="152" width="8" height="8" rx="2" />
       ))}
 
-      <rect className="worker" x="60" y="228" width="980" height="44" rx="8" />
-      <text x="76" y="256" className="worker-label start">
-        Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
-      </text>
-      <text x="1024" y="256" className="worker-label end">
-        isolates: {isolates?.stateless?.live ?? 0} stateless · {cellPool?.live ?? 0} cell{cellPool ? `, ${MB(cellPool.heap_bytes)} heap` : ""}
-      </text>
-
       {cells.length === 0 ? (
         <text x="600" y="360" className="caption">
           no cells yet: this node owns no Durable Objects
         </text>
       ) : (
-        shown.map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={300} />)
+        shown.map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={CELL_TOP} />)
       )}
-      {cells.length > 0 && <path className="flow" d="M210 272 V 298" markerEnd="url(#arrow)" />}
-      {cells.length > 3 && (
-        <text x="1140" y="448" className="caption end">
-          +{cells.length - 3} more cells
+      {socketCell >= 0 &&
+        clients.map(({ landing }, i) => (
+          <rect key={i} className="port" x={landing - 4} y={CELL_TOP - 4} width="8" height="8" rx="2" />
+        ))}
+      {chips.map(({ cell, x, width }) => (
+        <CellChip key={cell.id} cell={cell} x={x} y={CHIP_TOP} width={width} />
+      ))}
+      {chips.length < rest.length && (
+        <text x={(chips.at(-1)?.x ?? 1020) - 10} y={CHIP_TOP + 16} className="caption end">
+          +{rest.length - chips.length} more
         </text>
       )}
 
-      {/* The bucket: celld's source of truth, where any node can pick a cell up. */}
-      <path className="sync" d="M600 466 V 528" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
-      <text x="612" y="505" className="caption start">
+      {/* The bucket: celld's source of truth, where any node can pick a cell up.
+          Below the node, which the row of chips makes taller. */}
+      <g transform="translate(0 28)">
+      <path className="sync" d="M80 488 V 562" markerStart="url(#arrow-small)" markerEnd="url(#arrow-small)" />
+      <text x="96" y="530" className="caption start">
         replicates writes · restores on wake
       </text>
-      <path className="bucket" d="M60 540 V 680 A 540 26 0 0 0 1140 680 V 540" />
-      <ellipse className="bucket" cx="600" cy="540" rx="540" ry="26" />
-      <text x="600" y="592" className="bucket-name">
-        bucket {node.bucket}
+      <g className="bucket-icon" transform="translate(64 574)">
+        <path d="M3 8 Q16 -10 29 8" fill="none" />
+        <path d="M2 8 L6 30 Q16 34 26 30 L30 8" />
+        <ellipse cx="16" cy="8" rx="14" ry="4" />
+      </g>
+      <text x="108" y="584" className="bucket-name start">
+        S3 bucket: {node.bucket}
       </text>
-      <text x="600" y="618" className="caption">
+      <text x="108" y="608" className="caption start">
         {bucket ? `${bucket.objects} objects · ${MB(bucket.bytes)}` : "contents unavailable"}
       </text>
+      {/* Each cell's SQLite database, on the left, and the rest of the bucket on
+          the right. Dots beside them flash for each read and write the Deck
+          makes on a database or R2 bucket (see worker/trace.ts). */}
+      {bucket && <IoLegend x={116} y={640 + (Math.min(bucket.cells.length, BUCKET_ROWS) + Number(bucket.cells.length > BUCKET_ROWS)) * 26} />}
+      {bucket?.cells.slice(0, BUCKET_ROWS).map((cell, i) => {
+        const [cls, hex = ""] = cell.id.split(":");
+        const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
+        const live = leases.some((l) => l.name === cell.owner && (l.expiresInMs ?? 0) > 0);
+        // The cell this database belongs to, in the look of its box in the
+        // node; a cell no node here owns is only in the bucket.
+        const look = cells.find((owned) => owned.id === cell.id)?.look ?? "inactive";
+        return (
+          <g key={cell.id} className={live ? undefined : "bucket-row-inactive"}>
+            <g className={`cell cell-${look}`}>
+              <rect x="72" y={626 + i * 26} width="18" height="18" rx="4" />
+            </g>
+            <IoDots x={116} y={635 + i * 26} store="sqlite" target={hex} />
+            <text x="130" y={640 + i * 26} className="bucket-chip start">
+              cells/{cls}:{shortId(hex)} · SQLite{at}
+            </text>
+          </g>
+        );
+      })}
+      {bucket && bucket.cells.length > BUCKET_ROWS && (
+        <text x="130" y={640 + BUCKET_ROWS * 26} className="bucket-chip start">
+          +{bucket.cells.length - BUCKET_ROWS} more databases
+        </text>
+      )}
       {bucket &&
         [
-          `nodes/ · ${leases.length} lease${leases.length === 1 ? "" : "s"}`,
-          `cells/ · ${bucket.cells.length} cell${bucket.cells.length === 1 ? "" : "s"}${inactive ? `, ${inactive} inactive` : ""}`,
-          `deploy/ · ${deployment?.versions ?? 0} versions`,
-          ...project.r2Buckets.map(({ bucket_name }) => {
+          { text: `nodes/ · ${leases.length} lease${leases.length === 1 ? "" : "s"}`, binding: undefined },
+          { text: `deploy/ · ${deployment?.versions ?? 0} versions`, binding: undefined },
+          ...project.r2Buckets.map(({ binding, bucket_name }) => {
             const n = bucket.r2.find((r) => r.bucket === bucket_name)?.objects ?? 0;
-            return `r2/${bucket_name} · ${n} object${n === 1 ? "" : "s"}`;
+            return { text: `r2/${bucket_name} · ${n} object${n === 1 ? "" : "s"}`, binding };
           }),
-        ].map((chip, i) => (
-          <text key={chip} x={i % 2 ? 870 : 330} y={650 + Math.floor(i / 2) * 26} className="bucket-chip">
-            {chip}
-          </text>
+        ].map(({ text, binding }, i) => (
+          <g key={text}>
+            {binding && <IoDots x={646} y={635 + i * 26} store="r2" target={binding} />}
+            <text x="660" y={640 + i * 26} className="bucket-chip start">
+              {text}
+            </text>
+          </g>
         ))}
+
+      </g>
 
       {/* Over everything, so a zap shows along the whole route. */}
       <g ref={zaps} />

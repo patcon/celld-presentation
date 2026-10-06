@@ -11,6 +11,7 @@
     "celld:dev": "pnpm celld:build && concurrently -k -n vite,celld,operator \"CELLD=1 vite build --watch\" \"pnpm celld:serve\" \"node scripts/celld-operator.ts\"",
     "celld:dev:share": "pnpm celld:build && concurrently -k -n vite,celld,operator,tunnel \"CELLD=1 vite build --watch\" \"pnpm celld:serve\" \"node scripts/celld-operator.ts\" \"node scripts/tunnel.ts http://localhost:5173\"",
     "celld:state": "node scripts/celld-state.ts",
+    "celld:dummy": "curl -s -X POST http://127.0.0.1:5173/api/dummies/1 && echo",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
