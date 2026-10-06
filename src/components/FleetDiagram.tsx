@@ -80,6 +80,21 @@ const CHANNEL = CELL_TOP - 24 - CHANNEL_TOP;
 // How many cells' databases the bucket lists before it sums up the rest.
 const BUCKET_ROWS = 6;
 
+// A cell past the three drawn in full: its class, in its state's look.
+const CHIP_TOP = 476;
+
+function CellChip({ cell, x, y, width }: { cell: CellView; x: number; y: number; width: number }) {
+  return (
+    <g className={`cell cell-${cell.look}`} transform={`translate(${x} ${y})`}>
+      <title>{`${cell.label} · ${cell.phase}`}</title>
+      <rect width={width} height="22" rx="6" />
+      <text x={width / 2} y="16" className="cell-chip">
+        {cell.cls}
+      </text>
+    </g>
+  );
+}
+
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
 // Dots fill in from the right: slides screens first, as they come and go least,
@@ -404,12 +419,12 @@ export function FleetDiagram() {
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
-      <svg className="fleet" viewBox="0 0 1200 840" role="img" aria-label="celld state unavailable">
-        <rect className="fleet-frame" x="20" y="20" width="1160" height="800" rx="16" />
-        <text x="600" y="410" className="node-name">
+      <svg className="fleet" viewBox="0 0 1200 868" role="img" aria-label="celld state unavailable">
+        <rect className="fleet-frame" x="20" y="20" width="1160" height="828" rx="16" />
+        <text x="600" y="424" className="node-name">
           No celld node to show
         </text>
-        <text x="600" y="445" className="caption">
+        <text x="600" y="459" className="caption">
           Run the deck with `pnpm celld:dev` to see its fleet, live.
         </text>
       </svg>
@@ -443,6 +458,17 @@ export function FleetDiagram() {
     channel: n === 1 ? CHANNEL_TOP + CHANNEL / 2 : CHANNEL_TOP + (CHANNEL * (n - 1 - i)) / (n - 1),
     landing: cellRight - 20 - i * lane,
   }));
+  // The cells past the first three, as small chips in a row under them,
+  // right-aligned with the last; as many as fit.
+  const rest = cells.slice(3);
+  const chips: { cell: CellView; x: number; width: number }[] = [];
+  for (let right = 1020; chips.length < rest.length; ) {
+    const cell = rest[chips.length];
+    const width = Math.max(60, cell.cls.length * 10 + 24);
+    if (right - width < 160) break;
+    chips.push({ cell, x: right - width, width });
+    right -= width + 8;
+  }
   const isolates = state.deployment?.isolates;
   const cellPool = isolates?.cells?.[project.name];
   const workerIsolates = isolates?.stateless?.live ?? 0;
@@ -463,7 +489,7 @@ export function FleetDiagram() {
     .join(" · ");
 
   return (
-    <svg ref={fleet} className="fleet" viewBox="0 0 1200 840" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
+    <svg ref={fleet} className="fleet" viewBox="0 0 1200 868" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
@@ -504,12 +530,12 @@ export function FleetDiagram() {
       <RouteChip x={330} y={96} />
 
       {/* The fleet, as the bucket's node leases describe it. */}
-      <rect className="fleet-frame" x="20" y="140" width="1160" height="360" rx="16" />
+      <rect className="fleet-frame" x="20" y="140" width="1160" height="388" rx="16" />
       <text x="36" y="130" className="caption start">
         fleet · {live.length} live node{live.length === 1 ? "" : "s"}
         {leases.length > live.length ? ` (+${leases.length - live.length} expired)` : ""} · celld {version}
       </text>
-      <rect className="node" x="40" y="156" width="1120" height="328" rx="12" />
+      <rect className="node" x="40" y="156" width="1120" height="356" rx="12" />
       <text x="60" y="190" className="node-name start">
         node {node.name}
       </text>
@@ -585,13 +611,18 @@ export function FleetDiagram() {
         clients.map(({ landing }, i) => (
           <rect key={i} className="port" x={landing - 4} y={CELL_TOP - 4} width="8" height="8" rx="2" />
         ))}
-      {cells.length > 3 && (
-        <text x="1140" y="478" className="caption end">
-          +{cells.length - 3} more cells
+      {chips.map(({ cell, x, width }) => (
+        <CellChip key={cell.id} cell={cell} x={x} y={CHIP_TOP} width={width} />
+      ))}
+      {chips.length < rest.length && (
+        <text x={(chips.at(-1)?.x ?? 1020) - 10} y={CHIP_TOP + 16} className="caption end">
+          +{rest.length - chips.length} more
         </text>
       )}
 
-      {/* The bucket: celld's source of truth, where any node can pick a cell up. */}
+      {/* The bucket: celld's source of truth, where any node can pick a cell up.
+          Below the node, which the row of chips makes taller. */}
+      <g transform="translate(0 28)">
       <path className="sync" d="M600 486 V 528" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
       <text x="612" y="512" className="caption start">
         replicates writes · restores on wake
@@ -648,6 +679,8 @@ export function FleetDiagram() {
             </text>
           </g>
         ))}
+
+      </g>
 
       {/* Over everything, so a zap shows along the whole route. */}
       <g ref={zaps} />
