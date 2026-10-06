@@ -29,6 +29,11 @@ body { margin: 0; }
   .code-slide pre { background: var(--shiki-dark-bg); color: var(--shiki-dark); }
   .code-slide .shiki-magic-move-item { color: var(--shiki-dark); }
 }
+/* Prev/next on /present, small and out of the way in the bottom-left corner. */
+.slide-nav { position: fixed; z-index: 3; left: 1rem; bottom: 1rem; display: flex; gap: 0.5rem; }
+.slide-nav button { width: 2.5rem; height: 2.5rem; padding: 0; font: inherit; font-size: 1.2rem; border-radius: 8px; border: 1px solid #8884; background: Canvas; color: CanvasText; opacity: 0.6; cursor: pointer; }
+.slide-nav button:hover:not(:disabled), .slide-nav button:focus-visible { opacity: 1; }
+.slide-nav button:disabled { opacity: 0.2; cursor: default; }
 .join-qr { width: min(75vh, 75vw); height: auto; border-radius: 12px; }
 
 /* Remote */

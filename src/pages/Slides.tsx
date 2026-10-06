@@ -8,7 +8,8 @@ import { usePointerStore } from "../components/Pointers";
 const NEXT_KEYS = ["ArrowRight", "PageDown"];
 const PREV_KEYS = ["ArrowLeft", "PageUp"];
 
-// `/` is a passive display; `/present` is the same view with keyboard control.
+// `/` is a passive display; `/present` is the same view with keyboard control,
+// plus ← → buttons like the ones in the deck's own code snippets.
 export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   const reactions = useFloatingReactions({ inFront: true });
   const pointers = usePointerStore();
@@ -19,19 +20,21 @@ export function Slides({ keyboard = false }: { keyboard?: boolean }) {
     if (features.main !== "pointer") pointers.clear();
   }, [features.main, pointers.clear]);
 
+  const first = slide <= 0;
+  const last = slide >= slides.length - 1;
+
   useEffect(() => {
     if (!keyboard) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       const step = NEXT_KEYS.includes(e.key) ? 1 : PREV_KEYS.includes(e.key) ? -1 : 0;
-      const target = Math.min(Math.max(slide + step, 0), slides.length - 1);
-      if (step === 0 || target === slide) return;
+      if (step === 0 || (step < 0 && first) || (step > 0 && last)) return;
       e.preventDefault();
-      goTo(target);
+      goTo(slide + step);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [keyboard, slide, goTo]);
+  }, [keyboard, slide, first, last, goTo]);
 
   const s = slides[slide] ?? slides[0];
   return (
@@ -39,6 +42,16 @@ export function Slides({ keyboard = false }: { keyboard?: boolean }) {
       {reactions.layer}
       {/* Always mounted: turning presence off empties the list, so everyone animates out. */}
       <Presence people={people} pointers={pointers} />
+      {keyboard && (
+        <nav className="slide-nav">
+          <button onClick={() => goTo(slide - 1)} disabled={first} aria-label="Previous slide">
+            ←
+          </button>
+          <button onClick={() => goTo(slide + 1)} disabled={last} aria-label="Next slide">
+            →
+          </button>
+        </nav>
+      )}
       <main id="slide">
         {s.content ?? (
           <>
