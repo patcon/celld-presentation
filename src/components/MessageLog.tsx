@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import usePartySocket from "partysocket/react";
 import { DECK_SOCKET } from "../useDeck";
 
@@ -33,7 +33,8 @@ export function MessageLog({ layout = "full" }: { layout?: MessageLogLayout }) {
   });
 
   // Pin to the newest line, without scrolling the page around the terminal.
-  useEffect(() => {
+  // Before paint, or a fast stream flickers each new line in below the fold for a frame.
+  useLayoutEffect(() => {
     if (body.current) body.current.scrollTop = body.current.scrollHeight;
   }, [lines]);
 
