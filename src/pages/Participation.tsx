@@ -6,7 +6,8 @@ import { PointerPad } from "../components/PointerPad";
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
   const { features, react, selfie, point } = useDeck({ audience: true });
-  const anyEnabled = features.reactions || features.presence || features.main !== "none";
+  // Presence puts nothing on this page (it shows on the slides), so it alone still leaves them waiting.
+  const anyEnabled = features.reactions || features.main !== "none";
 
   return (
     <>
