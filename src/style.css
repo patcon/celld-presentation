@@ -147,8 +147,12 @@ body { margin: 0; }
 .presence li { transition: translate 0.8s var(--spring-back), scale 0.3s; }
 .presence li.pointing { z-index: 1; scale: 1.4; box-shadow: 0 0 0 2px Canvas, 0 4px 12px #0006; transition: translate 0.3s var(--spring-out), scale 0.3s; }
 /* Pulled to its WebSocket in the fleet diagram (see tether.ts), which moves it every frame itself. */
-.presence li[data-tethered] { transition: scale 0.3s; box-shadow: 0 0 0 2px var(--accent); }
+.presence li[data-tethered] { transition: scale 0.3s; }
 .presence li[data-attached] { scale: 0.5; }
+/* The attached ring fades with opacity (composited), not by animating box-shadow, so it eases out as the avatar lets go. */
+.presence li { position: relative; }
+.presence li::after { content: ""; position: absolute; inset: 0; border-radius: 50%; box-shadow: inset 0 0 0 4px var(--accent); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.presence li[data-attached]::after { opacity: 1; }
 /* Leavers still need an animation, or they'd never get removed; a fade will do. */
 @media (prefers-reduced-motion: reduce) {
   .presence li, .presence li.pointing { animation: none; transition: none; }
