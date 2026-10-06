@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DECK_SOCKET } from "../useDeck";
 import { selfieUrl } from "../../shared/protocol";
+import { defaultAvatar } from "../avatar";
 
 const SIZE = 384;
 
@@ -130,7 +131,11 @@ export function SelfieButton({ selfie }: { selfie?: number }) {
           onPickFile={pickFile}
         />
       ) : (
-        selfie && <img src={selfieUrl({ id: DECK_SOCKET.id, selfie })} alt="Your selfie" />
+        // Until they take one, the generated avatar they show up as.
+        <img
+          src={selfie ? selfieUrl({ id: DECK_SOCKET.id, selfie }) : defaultAvatar(DECK_SOCKET.id)}
+          alt={selfie ? "Your selfie" : "Your avatar"}
+        />
       )}
       <input
         ref={input}

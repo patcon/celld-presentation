@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { selfieUrl, type Person } from "../../shared/protocol";
 import { usePointer, type PointerStore } from "./Pointers";
+import { defaultAvatar } from "../avatar";
 
-// A stable colour per client, for people without a selfie yet.
+// A stable colour per client, behind their picture while it loads.
 const hue = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
 
 type Shown = Person & { leaving?: boolean };
@@ -42,7 +43,7 @@ function Avatar({ person, pointers, onGone }: { person: Shown; pointers?: Pointe
       style={{ "--hue": hue(person.id) } as React.CSSProperties}
       onAnimationEnd={person.leaving ? onGone : undefined}
     >
-      {person.selfie && <img src={selfieUrl(person)} alt="" />}
+      <img src={person.selfie ? selfieUrl(person) : defaultAvatar(person.id)} alt="" />
     </li>
   );
 }
