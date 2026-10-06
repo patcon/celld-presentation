@@ -49,6 +49,17 @@ body { margin: 0; }
 .fleet .worker-label { font-size: 15px; opacity: 0.85; }
 .fleet circle.client { fill: var(--accent); opacity: 0.85; transform-box: fill-box; transform-origin: center; animation: arrive 0.3s ease-out; }
 .fleet .flow { fill: none; stroke: var(--accent); stroke-width: 3; }
+/* Text that socket lines pass behind, outlined in the page colour. */
+.fleet .halo { paint-order: stroke; stroke: Canvas; stroke-width: 6px; stroke-linejoin: round; }
+/* A WebSocket: client to node stays up whatever the cell does; node to cell follows the cell's phase. */
+.fleet .socket { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.7; }
+.fleet .port { fill: Canvas; stroke: var(--accent); stroke-width: 2; }
+.fleet .socket-hop { fill: none; stroke-width: 2; opacity: 0.7; transition: stroke 0.4s; }
+.fleet .hop-resident { stroke: #3b82f6; }
+.fleet .hop-dormant { stroke: #8b5cf6; stroke-dasharray: 6 5; opacity: 0.5; }
+.fleet .hop-changing { stroke: var(--accent); stroke-dasharray: 6 5; animation: hop-wake 0.6s linear infinite; }
+.fleet .hop-inactive { stroke: #888; stroke-dasharray: 3 6; opacity: 0.4; }
+@keyframes hop-wake { to { stroke-dashoffset: -11; } }
 .fleet .sync { stroke: #888; stroke-width: 2; stroke-dasharray: 5 5; }
 .fleet .bucket { fill: color-mix(in srgb, CanvasText 5%, Canvas); stroke: #8888; stroke-width: 2; }
 .fleet .bucket-name { font-size: 22px; font-weight: 700; }
@@ -66,7 +77,7 @@ body { margin: 0; }
 .fleet .cell-inactive rect { fill: none; stroke: #8888; stroke-dasharray: 4 4; }
 .fleet .legend-label { font-size: 15px; }
 .fleet .legend-state { font-weight: 700; }
-@media (prefers-reduced-motion: reduce) { .fleet .cell rect { transition: none; } .fleet circle.client { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fleet .cell rect { transition: none; } .fleet circle.client, .fleet .hop-changing { animation: none; } }
 
 /* Remote */
 /* One screen tall: the participation controls stay put up top, and only the slide list scrolls. */

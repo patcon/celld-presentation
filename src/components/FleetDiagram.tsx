@@ -91,6 +91,23 @@ export function FleetDiagram() {
   const cells = cellsOf(view, node.name);
   const inactive = (bucket?.cells ?? []).filter((cell) => !live.some((l) => l.name === cell.owner)).length;
   const sockets = state.node_load.host_websockets;
+  // /state only counts the node's sockets, so they all go to the cell the deck
+  // gets by name (the only one that accepts WebSockets), or else the one cell in memory.
+  const shown = cells.slice(0, 3);
+  const socketCell = Math.max(
+    shown.findIndex((cell) => view.names[cell.id]),
+    shown.findIndex((cell) => cell.look !== "inactive"),
+  );
+  // Each socket enters the node through its own port in a lane down the node's
+  // right edge, clear of its text, and turns into the cell's side.
+  const n = Math.min(sockets, 14);
+  const lane = Math.min(34, 80 / Math.max(1, n - 1));
+  const clients = Array.from({ length: n }, (_, i) => ({
+    x: 1140 - i * 34,
+    port: 1140 - i * lane,
+    landing: 400 - i * (82 / Math.max(1, n - 1)),
+  }));
+  const cellSide = 60 + socketCell * 330 + 300;
   const isolates = state.deployment?.isolates;
   const cellPool = isolates?.cells?.[project.name];
   const deployment = bucket?.deployments.find((d) => d.script === project.name);
@@ -112,14 +129,16 @@ export function FleetDiagram() {
         </marker>
       </defs>
 
-      {/* Clients: one dot per WebSocket the node holds open. */}
-      {Array.from({ length: Math.min(sockets, 14) }, (_, i) => (
-        <circle key={i} className="client" cx={1140 - i * 34} cy="50" r="13" />
+      {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself. */}
+      {clients.map(({ x, port }, i) => (
+        <g key={i}>
+          <path className="socket" d={`M${x} 63 C ${x} 115, ${port} 105, ${port} 156`} />
+          <circle className="client" cx={x} cy="50" r="13" />
+        </g>
       ))}
-      <text x="1160" y="92" className="caption end">
+      <text x="1160" y="92" className="caption end halo">
         {sockets === 0 ? "no WebSockets open" : `${sockets} WebSocket${sockets === 1 ? "" : "s"} open${sockets > 14 ? " (14 shown)" : ""}`}
       </text>
-      <path className="flow" d="M1060 102 C 960 150, 760 150, 715 226" markerEnd="url(#arrow)" />
 
       {/* Legend */}
       <g className="legend" transform="translate(40 22)">
@@ -143,18 +162,32 @@ export function FleetDiagram() {
       <text x="60" y="190" className="node-name start">
         node {node.name}
       </text>
-      <text x="1140" y="190" className="caption end">
+      <text x="1040" y="190" className="caption end">
         listen {node.listen} · operator {node.operator}
       </text>
       <text x="60" y="214" className="caption start">
         {nodeLine}
       </text>
 
-      <rect className="worker" x="60" y="228" width="1080" height="44" rx="8" />
+      {/* The node holds each socket and hands its frames to the cell, which
+          sleeps through them while it hibernates (and wakes on the next one). */}
+      {socketCell >= 0 &&
+        clients.map(({ port, landing }, i) => (
+          <path
+            key={i}
+            className={`socket-hop hop-${shown[socketCell].look}`}
+            d={`M${port} 156 V ${landing - 16} Q ${port} ${landing}, ${port - 16} ${landing} H ${cellSide}`}
+          />
+        ))}
+      {clients.map(({ port }, i) => (
+        <rect key={i} className="port" x={port - 4} y="152" width="8" height="8" rx="2" />
+      ))}
+
+      <rect className="worker" x="60" y="228" width="980" height="44" rx="8" />
       <text x="76" y="256" className="worker-label start">
-        Worker {project.name} · deployment {state.deployment?.version ?? "?"} (generation {state.deployment?.generation ?? "?"})
+        Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
       </text>
-      <text x="1124" y="256" className="worker-label end">
+      <text x="1024" y="256" className="worker-label end">
         isolates: {isolates?.stateless?.live ?? 0} stateless · {cellPool?.live ?? 0} cell{cellPool ? `, ${MB(cellPool.heap_bytes)} heap` : ""}
       </text>
 
@@ -163,7 +196,7 @@ export function FleetDiagram() {
           no cells yet: this node owns no Durable Objects
         </text>
       ) : (
-        cells.slice(0, 3).map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={300} />)
+        shown.map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={300} />)
       )}
       {cells.length > 0 && <path className="flow" d="M210 272 V 298" markerEnd="url(#arrow)" />}
       {cells.length > 3 && (
