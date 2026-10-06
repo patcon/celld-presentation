@@ -69,6 +69,9 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
   );
 }
 
+// The cells' top edge, with a channel above it, below the worker, for the sockets.
+const CELL_TOP = 324;
+
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
 // Dots fill in from the right: slides screens first, as they come and go least,
@@ -369,16 +372,19 @@ export function FleetDiagram() {
     shown.findIndex((cell) => view.names[cell.id]),
     shown.findIndex((cell) => cell.look !== "inactive"),
   );
-  // Each socket enters the node through its own port in a lane down the node's
-  // right edge, clear of its text, and turns into the cell's side.
+  // Each socket enters the node through its own port by the node's top-right
+  // corner, runs down past the worker and along the channel above the cells,
+  // and drops into its own port by the cell's top-right corner. The rightmost
+  // socket turns lowest and lands rightmost, so none of them cross.
   const n = Math.min(sockets, 14);
   const lane = Math.min(34, 80 / Math.max(1, n - 1));
+  const cellRight = 60 + socketCell * 330 + 300;
   const clients = Array.from({ length: n }, (_, i) => ({
     x: 1140 - i * 34,
     port: 1140 - i * lane,
-    landing: 400 - i * (82 / Math.max(1, n - 1)),
+    channel: CELL_TOP - 16 - i * Math.min(8, 24 / Math.max(1, n - 1)),
+    landing: cellRight - 20 - i * lane,
   }));
-  const cellSide = 60 + socketCell * 330 + 300;
   const isolates = state.deployment?.isolates;
   const cellPool = isolates?.cells?.[project.name];
   const deployment = bucket?.deployments.find((d) => d.script === project.name);
@@ -447,12 +453,12 @@ export function FleetDiagram() {
       {/* The node holds each socket and hands its frames to the cell, which
           sleeps through them while it hibernates (and wakes on the next one). */}
       {socketCell >= 0 &&
-        clients.map(({ port, landing }, i) => (
+        clients.map(({ port, channel, landing }, i) => (
           <path
             key={i}
             data-index={i}
             className={`socket-hop hop-${shown[socketCell].look}`}
-            d={`M${port} 156 V ${landing - 16} Q ${port} ${landing}, ${port - 16} ${landing} H ${cellSide}`}
+            d={`M${port} 156 V ${channel - 8} Q ${port} ${channel}, ${port - 8} ${channel} H ${landing + 8} Q ${landing} ${channel}, ${landing} ${channel + 8} V ${CELL_TOP}`}
           />
         ))}
       {clients.map(({ port }, i) => (
@@ -472,11 +478,15 @@ export function FleetDiagram() {
           no cells yet: this node owns no Durable Objects
         </text>
       ) : (
-        shown.map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={300} />)
+        shown.map((cell, i) => <CellBox key={cell.id} cell={cell} x={60 + i * 330} y={CELL_TOP} />)
       )}
-      {cells.length > 0 && <path className="flow" d="M210 272 V 298" markerEnd="url(#arrow)" />}
+      {socketCell >= 0 &&
+        clients.map(({ landing }, i) => (
+          <rect key={i} className="port" x={landing - 4} y={CELL_TOP - 4} width="8" height="8" rx="2" />
+        ))}
+      {cells.length > 0 && <path className="flow" d={`M210 272 V ${CELL_TOP - 2}`} markerEnd="url(#arrow)" />}
       {cells.length > 3 && (
-        <text x="1140" y="448" className="caption end">
+        <text x="1140" y="458" className="caption end">
           +{cells.length - 3} more cells
         </text>
       )}
