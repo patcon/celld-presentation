@@ -47,6 +47,14 @@ export function useDeckSockets() {
   );
 }
 
+// Every message the Deck sends this page, for the fleet diagram to animate.
+const messageListeners = new Set<(msg: ServerMessage) => void>();
+
+export function onDeckMessage(listener: (msg: ServerMessage) => void) {
+  messageListeners.add(listener);
+  return () => void messageListeners.delete(listener);
+}
+
 // Connects to the Deck Durable Object and tracks the shared presentation state.
 // partysocket reconnects automatically (e.g. after a phone wakes from sleep),
 // and the Deck re-sends full state on every connect.
@@ -71,6 +79,7 @@ export function useDeck({
     query: role ? { role } : undefined,
     onMessage(e) {
       const msg: ServerMessage = JSON.parse(e.data);
+      messageListeners.forEach((l) => l(msg));
       if (msg.type === "state") {
         setSlide(msg.slide);
         setFeatures(msg.features);

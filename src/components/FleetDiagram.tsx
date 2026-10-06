@@ -1,7 +1,7 @@
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useCelldState, type CelldView } from "../useCelldState";
 import { registerAnchor } from "../tether";
-import { useDeckSockets } from "../useDeck";
+import { onDeckMessage, useDeckSockets } from "../useDeck";
 import type { SocketRole } from "../../shared/protocol";
 
 // How a cell (one Durable Object instance) is doing, in celld's own terms.
@@ -73,10 +73,61 @@ const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${
 
 const ROLE_ORDER: SocketRole[] = ["audience", "screen", "other"];
 
+const ZAP_LENGTH = 18;
+const ZAP_SPEED = 3; // diagram units per ms
+const ZAP_GAP_MS = 100; // per socket, so a stream of pointer moves doesn't smear
+
+// A little zap along a socket, client to cell, for each message this screen
+// hears that someone else's message caused.
+function useZaps(layer: React.RefObject<SVGGElement | null>) {
+  useEffect(() => {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const last = new Map<string, number>();
+
+    // A socket's whole route, client to node (its line, wherever its dot is) and node to cell.
+    const route = (dot: Element) => {
+      const i = dot.getAttribute("data-index");
+      const line = dot.querySelector("path.socket")?.getAttribute("d");
+      const hop = layer.current?.ownerSVGElement?.querySelector(`path.socket-hop[data-index="${i}"]`)?.getAttribute("d");
+      return line && `${line} ${hop ?? ""}`;
+    };
+
+    const zap = (dot: Element) => {
+      const key = dot.getAttribute("data-index") ?? "";
+      const now = performance.now();
+      if (now - (last.get(key) ?? 0) < ZAP_GAP_MS) return;
+      last.set(key, now);
+      const d = route(dot);
+      if (!d || !layer.current) return;
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      path.setAttribute("class", "zap");
+      layer.current.append(path);
+      const length = path.getTotalLength();
+      path.style.strokeDasharray = `${ZAP_LENGTH} ${length + ZAP_LENGTH}`;
+      path.style.strokeDashoffset = String(ZAP_LENGTH);
+      path
+        .animate([{ strokeDashoffset: ZAP_LENGTH }, { strokeDashoffset: -length }], {
+          duration: length / ZAP_SPEED,
+          easing: "ease-in",
+        })
+        .finished.finally(() => path.remove());
+    };
+
+    return onDeckMessage((msg) => {
+      const from = "from" in msg ? msg.from : undefined;
+      const svg = layer.current?.ownerSVGElement;
+      if (!from || !svg) return;
+      const sender = [...svg.querySelectorAll("g[data-index]")].find((dot) => dot.getAttribute("data-client") === from);
+      if (sender) zap(sender);
+    });
+  }, [layer]);
+}
+
 // A client at the far end of one of the node's sockets, tagged with its client
 // id. For an audience member, src/tether.ts pulls their presence circle over to
 // it, and moves it (and its line) as the two meet. A slides screen gets a screen icon.
-function ClientDot({ id, role, x, port }: { id?: string; role?: SocketRole; x: number; port: number }) {
+function ClientDot({ index, id, role, x, port }: { index: number; id?: string; role?: SocketRole; x: number; port: number }) {
   const circle = useRef<SVGCircleElement>(null);
   const line = useRef<SVGPathElement>(null);
 
@@ -101,7 +152,7 @@ function ClientDot({ id, role, x, port }: { id?: string; role?: SocketRole; x: n
   }, [id, role, x, port]);
 
   return (
-    <g data-client={id} data-role={role}>
+    <g data-index={index} data-client={id} data-role={role}>
       <path ref={line} className="socket" d={socketPath(x, 50, port)} />
       <circle ref={circle} className="client" cx={x} cy="50" r="13" />
       {role === "screen" && (
@@ -117,6 +168,8 @@ function ClientDot({ id, role, x, port }: { id?: string; role?: SocketRole; x: n
 export function FleetDiagram() {
   const view = useCelldState();
   // celld only counts sockets; the Deck says whose each is, and the dots take them in turn.
+  const zaps = useRef<SVGGElement>(null);
+  useZaps(zaps);
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
@@ -179,7 +232,7 @@ export function FleetDiagram() {
 
       {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself. */}
       {clients.map(({ x, port }, i) => (
-        <ClientDot key={i} id={roster[i]?.id} role={roster[i]?.role} x={x} port={port} />
+        <ClientDot key={i} index={i} id={roster[i]?.id} role={roster[i]?.role} x={x} port={port} />
       ))}
       <text x="1160" y="92" className="caption end halo">
         {sockets === 0 ? "no WebSockets open" : `${sockets} WebSocket${sockets === 1 ? "" : "s"} open${sockets > 14 ? " (14 shown)" : ""}`}
@@ -220,6 +273,7 @@ export function FleetDiagram() {
         clients.map(({ port, landing }, i) => (
           <path
             key={i}
+            data-index={i}
             className={`socket-hop hop-${shown[socketCell].look}`}
             d={`M${port} 156 V ${landing - 16} Q ${port} ${landing}, ${port - 16} ${landing} H ${cellSide}`}
           />
@@ -277,6 +331,9 @@ export function FleetDiagram() {
             {chip}
           </text>
         ))}
+
+      {/* Over everything, so a zap shows along the whole route. */}
+      <g ref={zaps} />
     </svg>
   );
 }
