@@ -27,7 +27,7 @@ const unit = (n: unknown) => Math.min(Math.max(Number(n) || 0, 0), 1);
 // One Deck object holds the shared state for the whole presentation.
 // Every client (slides screen, presenter remote, audience participation) connects to the same instance.
 export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
-  // /participation connects with `?role=audience`; only those sockets count towards presence.
+  // /participation and /remote connect with `?role=audience`; only those sockets count towards presence.
   tags(request: Request) {
     return new URL(request.url).searchParams.get("role") === AUDIENCE ? [AUDIENCE] : [];
   }

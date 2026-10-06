@@ -3,9 +3,16 @@ import { useDeck } from "../useDeck";
 import { SelfieButton } from "../components/SelfieButton";
 import { PointerPad } from "../components/PointerPad";
 
+type Deck = ReturnType<typeof useDeck>;
+
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
-  const { features, react, selfie, point } = useDeck({ audience: true });
+  return <ParticipationView deck={useDeck({ audience: true })} />;
+}
+
+// Also shown over /remote as its audience preview, on the remote's own connection.
+export function ParticipationView({ deck }: { deck: Deck }) {
+  const { features, react, selfie, point } = deck;
   // Presence puts nothing on this page (it shows on the slides), so it alone still leaves them waiting.
   const anyEnabled = features.reactions || features.main !== "none";
 
