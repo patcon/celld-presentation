@@ -5,9 +5,11 @@ import { Code, type Lang } from "./components/Code";
 // Snippets are hand-written, simplified versions of the real code, not imported from it.
 import wrangler1 from "../snippets/worker/wrangler-1.jsonc?raw";
 import wrangler2 from "../snippets/worker/wrangler-2.jsonc?raw";
+import wrangler3 from "../snippets/worker/wrangler-3.jsonc?raw";
 import deck1 from "../snippets/worker/deck-1.ts?raw";
 import deck2 from "../snippets/worker/deck-2.ts?raw";
 import deck3 from "../snippets/worker/deck-3.ts?raw";
+import deck4 from "../snippets/worker/deck-4.ts?raw";
 import slides1 from "../snippets/frontend/slides-1.tsx?raw";
 import slides2 from "../snippets/frontend/slides-2.tsx?raw";
 import slides3 from "../snippets/frontend/slides-3.tsx?raw";
@@ -43,4 +45,6 @@ export const slides: Slide[] = [
   ]),
   { title: "Join in (QR code)", content: <JoinQrCode /> },
   { title: "Message log (terminal)", content: <MessageLog layout="wide" /> },
+  ...codeSteps("wrangler.jsonc", "jsonc", [["Code: + R2 bucket binding", wrangler3]]),
+  ...codeSteps("worker/index.ts", "ts", [["Code: storing selfies in R2", deck4]]),
 ];

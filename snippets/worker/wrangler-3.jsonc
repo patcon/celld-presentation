@@ -1,0 +1,12 @@
+{
+  "name": "celld-presentation",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "durable_objects": {
+    "bindings": [{ "name": "DECK", "class_name": "Deck" }]
+  },
+  "r2_buckets": [                                                   // [!code ++]
+    { "binding": "SELFIES", "bucket_name": "celld-presentation-selfies" } // [!code ++]
+  ],                                                                // [!code ++]
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Deck"] }]
+}
