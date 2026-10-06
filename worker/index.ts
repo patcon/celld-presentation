@@ -7,6 +7,7 @@ import {
   type Features,
   type PresenceMessage,
   type ServerMessage,
+  type SocketsMessage,
   type StateMessage,
 } from "../shared/protocol";
 import { WebSocketServer } from "./WebSocketServer";
@@ -18,6 +19,7 @@ type Env = {
 };
 
 const AUDIENCE = "audience";
+const SCREEN = "screen";
 const MAX_SELFIE_BYTES = 1024 * 1024;
 
 const selfieKey = (id: string) => `selfies/${id}.jpg`;
@@ -28,11 +30,14 @@ const unit = (n: unknown) => Math.min(Math.max(Number(n) || 0, 0), 1);
 // Every client (slides screen, presenter remote, audience participation) connects to the same instance.
 export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   // /participation and /remote connect with `?role=audience`; only those sockets count towards presence.
+  // The slides connect with `?role=screen`.
   tags(request: Request) {
-    return new URL(request.url).searchParams.get("role") === AUDIENCE ? [AUDIENCE] : [];
+    const role = new URL(request.url).searchParams.get("role");
+    return role === AUDIENCE || role === SCREEN ? [role] : [];
   }
 
   async onConnect(ws: WebSocket) {
+    this.broadcastSockets();
     this.send(ws, await this.state());
     // So a reload, or the feature coming back on, still shows their own selfie.
     const selfie = await this.ctx.storage.get<number>(`selfie:${this.clientId(ws)}`);
@@ -44,6 +49,7 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   }
 
   async onClose(ws: WebSocket) {
+    this.broadcastSockets(ws);
     if (!this.hasTag(ws, AUDIENCE)) return;
     await this.broadcastPresence(ws);
     // So a phone that drops mid-touch doesn't leave its pointer stuck on screen.
@@ -125,6 +131,18 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     const ids = [...new Set(sockets.map((ws) => this.clientId(ws)))];
     const selfies = await this.ctx.storage.get<number>(ids.map((id) => `selfie:${id}`));
     return { type: "presence", people: ids.map((id) => ({ id, selfie: selfies.get(`selfie:${id}`) })) };
+  }
+
+  // Every open socket, by client id and role. Only sent while the Deck is awake for
+  // a socket opening or closing anyway, so it never wakes a hibernating Deck.
+  sockets(leaving?: WebSocket): SocketsMessage {
+    const sockets = this.ctx.getWebSockets().filter((ws) => ws !== leaving);
+    const role = (ws: WebSocket) => (this.hasTag(ws, AUDIENCE) ? "audience" : this.hasTag(ws, SCREEN) ? "screen" : "other");
+    return { type: "sockets", sockets: sockets.map((ws) => ({ id: this.clientId(ws), role: role(ws) })) };
+  }
+
+  broadcastSockets(leaving?: WebSocket) {
+    this.broadcast(this.sockets(leaving), SCREEN);
   }
 
   async broadcastPresence(leaving?: WebSocket) {

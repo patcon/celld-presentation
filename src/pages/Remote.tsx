@@ -18,7 +18,7 @@ const previewInUrl = () => new URLSearchParams(location.search).has("preview");
 export function Remote() {
   // The presenter is in the audience too, so they show in presence whether or
   // not the preview is open, and the preview needs no socket of its own.
-  const deck = useDeck({ audience: true });
+  const deck = useDeck({ role: "audience" });
   const { slide, goTo, features, toggle, setMain } = deck;
   const [previewing, setPreviewing] = useState(previewInUrl);
 

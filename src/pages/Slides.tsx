@@ -13,7 +13,7 @@ const PREV_KEYS = ["ArrowLeft", "PageUp"];
 export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   const reactions = useFloatingReactions({ inFront: true });
   const pointers = usePointerStore();
-  const { slide, goTo, features, people } = useDeck({ onReaction: reactions.add, onPointer: pointers.set });
+  const { slide, goTo, features, people } = useDeck({ role: "screen", onReaction: reactions.add, onPointer: pointers.set });
 
   // Nobody lifts a finger when the pointer gets switched off, so clear them all.
   useEffect(() => {

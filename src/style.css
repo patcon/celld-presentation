@@ -53,6 +53,7 @@ body { margin: 0; }
 .fleet .halo { paint-order: stroke; stroke: Canvas; stroke-width: 6px; stroke-linejoin: round; }
 /* A WebSocket: client to node stays up whatever the cell does; node to cell follows the cell's phase. */
 .fleet .socket { fill: none; stroke: var(--accent); stroke-width: 2; opacity: 0.7; }
+.fleet .screen-icon { fill: none; stroke: white; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .fleet .port { fill: Canvas; stroke: var(--accent); stroke-width: 2; }
 .fleet .socket-hop { fill: none; stroke-width: 2; opacity: 0.7; transition: stroke 0.4s; }
 .fleet .hop-resident { stroke: #3b82f6; }

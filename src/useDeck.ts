@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import usePartySocket from "partysocket/react";
 import {
   DEFAULT_FEATURES,
@@ -9,6 +9,7 @@ import {
   type Person,
   type Point,
   type ServerMessage,
+  type SocketsMessage,
   type ToggleFeature,
 } from "../shared/protocol";
 
@@ -32,18 +33,32 @@ export const DECK_SOCKET = {
   protocol: location.protocol === "https:" ? "wss" : "ws",
 } as const;
 
+// Who's on each of the Deck's sockets, as last sent to this screen; read by the fleet diagram.
+let sockets: SocketsMessage["sockets"] = [];
+const socketListeners = new Set<() => void>();
+
+export function useDeckSockets() {
+  return useSyncExternalStore(
+    (l) => {
+      socketListeners.add(l);
+      return () => socketListeners.delete(l);
+    },
+    () => sockets,
+  );
+}
+
 // Connects to the Deck Durable Object and tracks the shared presentation state.
 // partysocket reconnects automatically (e.g. after a phone wakes from sleep),
 // and the Deck re-sends full state on every connect.
-// `audience` marks this client as someone to count in presence.
+// `role: "audience"` marks this client as someone to count in presence; `"screen"`, as a slides screen.
 export function useDeck({
   onReaction,
   onPointer,
-  audience = false,
+  role,
 }: {
   onReaction?: (emoji: Emoji) => void;
   onPointer?: (from: string, at: Point | null) => void;
-  audience?: boolean;
+  role?: "audience" | "screen";
 } = {}) {
   const [slide, setSlide] = useState(0);
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
@@ -53,7 +68,7 @@ export function useDeck({
 
   const socket = usePartySocket({
     ...DECK_SOCKET,
-    query: audience ? { role: "audience" } : undefined,
+    query: role ? { role } : undefined,
     onMessage(e) {
       const msg: ServerMessage = JSON.parse(e.data);
       if (msg.type === "state") {
@@ -63,6 +78,9 @@ export function useDeck({
         if (!msg.features.presence) setPeople([]);
       } else if (msg.type === "presence") {
         setPeople(msg.people);
+      } else if (msg.type === "sockets") {
+        sockets = msg.sockets;
+        socketListeners.forEach((l) => l());
       } else if (msg.type === "selfie") {
         setSelfie(msg.selfie);
       } else if (msg.type === "reaction") {

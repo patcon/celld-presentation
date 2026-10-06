@@ -1,5 +1,3 @@
-import { useSyncExternalStore } from "react";
-
 // Pulls each audience member's presence circle to the WebSocket dot of theirs
 // in the fleet diagram, while both are on screen: the avatar springs over until
 // it sits on the dot, and the dot is tugged along as it arrives. When the
@@ -152,24 +150,4 @@ export function registerAnchor(id: string, anchor: Omit<Anchor, "body">) {
     if (anchors.get(id) === entry) anchors.delete(id);
     wake();
   };
-}
-
-// Who's in the presence list, in order, for the diagram to tag its dots with.
-let people: string[] = [];
-const listeners = new Set<() => void>();
-
-export function setTetherPeople(ids: string[]) {
-  if (ids.length === people.length && ids.every((id, i) => id === people[i])) return;
-  people = ids;
-  listeners.forEach((l) => l());
-}
-
-export function useTetherPeople() {
-  return useSyncExternalStore(
-    (l) => {
-      listeners.add(l);
-      return () => listeners.delete(l);
-    },
-    () => people,
-  );
 }

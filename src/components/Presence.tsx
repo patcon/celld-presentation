@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { selfieUrl, type Person } from "../../shared/protocol";
 import { usePointer, type PointerStore } from "./Pointers";
 import { defaultAvatar } from "../avatar";
-import { registerAvatar, setPointing, setTetherPeople } from "../tether";
+import { registerAvatar, setPointing } from "../tether";
 
 // A stable colour per client, behind their picture while it loads.
 const hue = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
@@ -63,8 +63,6 @@ export function Presence({ people, pointers }: { people: Person[]; pointers?: Po
     setPrevPeople(people);
     setShown(merge(shown, people));
   }
-
-  useEffect(() => setTetherPeople(shown.filter((s) => !s.leaving).map((s) => s.id)), [shown]);
 
   const remove = (id: string) => setShown((ss) => ss.filter((s) => !(s.id === id && s.leaving)));
 

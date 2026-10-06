@@ -7,7 +7,7 @@ type Deck = ReturnType<typeof useDeck>;
 
 // The audience's participation interface. What it shows is toggled from /remote.
 export function Participation() {
-  return <ParticipationView deck={useDeck({ audience: true })} />;
+  return <ParticipationView deck={useDeck({ role: "audience" })} />;
 }
 
 // Also shown over /remote as its audience preview, on the remote's own connection.

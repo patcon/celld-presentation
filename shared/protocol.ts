@@ -37,8 +37,13 @@ export type PresenceMessage = { type: "presence"; people: Person[] };
 // Sent only to the client it belongs to: on connect if they have one, and after each upload or delete.
 // No `selfie` means they deleted it.
 export type SelfieMessage = { type: "selfie"; selfie?: number };
+// What each open socket is: someone on /participation or /remote, a slides screen, or anything else.
+export type SocketRole = "audience" | "screen" | "other";
+// Sent to slides screens whenever a socket opens or closes, for the fleet diagram to label its sockets.
+export type SocketsMessage = { type: "sockets"; sockets: { id: string; role: SocketRole }[] };
 export type ServerMessage =
   | StateMessage
+  | SocketsMessage
   | PresenceMessage
   | SelfieMessage
   | { type: "reaction"; emoji: Emoji; from: string }
