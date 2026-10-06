@@ -71,7 +71,9 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
 
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
-const ROLE_ORDER: SocketRole[] = ["audience", "screen", "other"];
+// Dots fill in from the right: slides screens first, as they come and go least,
+// so the audience's dots after them don't shuffle along every time one does.
+const ROLE_ORDER: SocketRole[] = ["screen", "audience", "other"];
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const ZAP_SPEED = 2.6; // diagram units per ms
