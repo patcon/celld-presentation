@@ -183,6 +183,40 @@ function useZaps(layer: React.RefObject<SVGGElement | null>) {
   }, [layer]);
 }
 
+// Beside a SQLite database or R2 bucket, flashing for each call a cell makes
+// on it: blue for a read, amber for a write. `target` is the cell's id for a
+// database, or the binding's name for an R2 bucket.
+function IoDot({ x, y, store, target }: { x: number; y: number; store: "sqlite" | "r2"; target: string }) {
+  return <circle className="io-dot" cx={x} cy={y} r="6" data-store={store} data-target={target} />;
+}
+
+const IO_COLORS = { read: "#3b82f6", write: "#f59e0b" };
+
+function useIoFlashes(svg: React.RefObject<SVGSVGElement | null>) {
+  useEffect(() => {
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return onDeckMessage((msg) => {
+      if (msg.type !== "trace") return;
+      for (const event of msg.events) {
+        const target = event.store === "r2" ? event.binding : event.cell;
+        const dot = svg.current?.querySelector<SVGCircleElement>(`.io-dot[data-store="${event.store}"][data-target="${target}"]`);
+        if (!dot) continue;
+        // A newer call restarts the flash, so a burst of them doesn't pile up.
+        dot.getAnimations().forEach((animation) => animation.cancel());
+        const fill = IO_COLORS[event.write ? "write" : "read"];
+        dot.animate(
+          [
+            { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
+            { fill, opacity: 1, transform: "none", offset: 0.3 },
+            { opacity: 0.35, transform: "none" },
+          ],
+          { duration: 700, easing: "ease-out" },
+        );
+      }
+    });
+  }, [svg]);
+}
+
 // A client at the far end of one of the node's sockets, tagged with its client
 // id. For an audience member, src/tether.ts pulls their presence circle over to
 // it, and moves it (and its line) as the two meet. A slides screen gets a screen icon.
@@ -243,6 +277,8 @@ export function FleetDiagram() {
   // celld only counts sockets; the Deck says whose each is, and the dots take them in turn.
   const zaps = useRef<SVGGElement>(null);
   useZaps(zaps);
+  const fleet = useRef<SVGSVGElement>(null);
+  useIoFlashes(fleet);
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
@@ -263,7 +299,6 @@ export function FleetDiagram() {
   const live = leases.filter((lease) => (lease.expiresInMs ?? 0) > 0);
   const lease = leases.find((l) => l.name === node.name);
   const cells = cellsOf(view, node.name);
-  const inactive = (bucket?.cells ?? []).filter((cell) => !live.some((l) => l.name === cell.owner)).length;
   const sockets = state.node_load.host_websockets;
   // /state only counts the node's sockets, so they all go to the cell the deck
   // gets by name (the only one that accepts WebSockets), or else the one cell in memory.
@@ -296,7 +331,7 @@ export function FleetDiagram() {
     .join(" · ");
 
   return (
-    <svg className="fleet" viewBox="0 0 1200 720" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
+    <svg ref={fleet} className="fleet" viewBox="0 0 1200 720" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
@@ -391,25 +426,48 @@ export function FleetDiagram() {
       </text>
       <path className="bucket" d="M60 540 V 680 A 540 26 0 0 0 1140 680 V 540" />
       <ellipse className="bucket" cx="600" cy="540" rx="540" ry="26" />
-      <text x="600" y="592" className="bucket-name">
+      <text x="600" y="584" className="bucket-name">
         bucket {node.bucket}
       </text>
-      <text x="600" y="618" className="caption">
+      <text x="600" y="608" className="caption">
         {bucket ? `${bucket.objects} objects · ${MB(bucket.bytes)}` : "contents unavailable"}
       </text>
+      {/* Each cell's SQLite database, on the left, and the rest of the bucket on
+          the right. A dot flashes for each call the Deck makes on a database or
+          R2 bucket (see worker/trace.ts). */}
+      {bucket?.cells.slice(0, 2).map((cell, i) => {
+        const [cls, hex = ""] = cell.id.split(":");
+        const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
+        const live = leases.some((l) => l.name === cell.owner && (l.expiresInMs ?? 0) > 0);
+        return (
+          <g key={cell.id} className={live ? undefined : "bucket-row-inactive"}>
+            <IoDot x={116} y={635 + i * 26} store="sqlite" target={hex} />
+            <text x="130" y={640 + i * 26} className="bucket-chip start">
+              cells/{cls}:{shortId(hex)} · SQLite{at}
+            </text>
+          </g>
+        );
+      })}
+      {bucket && bucket.cells.length > 2 && (
+        <text x="130" y="692" className="bucket-chip start">
+          +{bucket.cells.length - 2} more databases
+        </text>
+      )}
       {bucket &&
         [
-          `nodes/ · ${leases.length} lease${leases.length === 1 ? "" : "s"}`,
-          `cells/ · ${bucket.cells.length} cell${bucket.cells.length === 1 ? "" : "s"}${inactive ? `, ${inactive} inactive` : ""}`,
-          `deploy/ · ${deployment?.versions ?? 0} versions`,
-          ...project.r2Buckets.map(({ bucket_name }) => {
+          { text: `nodes/ · ${leases.length} lease${leases.length === 1 ? "" : "s"}`, binding: undefined },
+          { text: `deploy/ · ${deployment?.versions ?? 0} versions`, binding: undefined },
+          ...project.r2Buckets.map(({ binding, bucket_name }) => {
             const n = bucket.r2.find((r) => r.bucket === bucket_name)?.objects ?? 0;
-            return `r2/${bucket_name} · ${n} object${n === 1 ? "" : "s"}`;
+            return { text: `r2/${bucket_name} · ${n} object${n === 1 ? "" : "s"}`, binding };
           }),
-        ].map((chip, i) => (
-          <text key={chip} x={i % 2 ? 870 : 330} y={650 + Math.floor(i / 2) * 26} className="bucket-chip">
-            {chip}
-          </text>
+        ].map(({ text, binding }, i) => (
+          <g key={text}>
+            {binding && <IoDot x={646} y={635 + i * 26} store="r2" target={binding} />}
+            <text x="660" y={640 + i * 26} className="bucket-chip start">
+              {text}
+            </text>
+          </g>
         ))}
 
       {/* Over everything, so a zap shows along the whole route. */}

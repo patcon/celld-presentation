@@ -68,6 +68,8 @@ body { margin: 0; }
 .fleet .bucket { fill: color-mix(in srgb, CanvasText 5%, Canvas); stroke: #8888; stroke-width: 2; }
 .fleet .bucket-name { font-size: 22px; font-weight: 700; }
 .fleet .bucket-chip { font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fleet .bucket-row-inactive { opacity: 0.55; }
+.fleet .io-dot { fill: #888; opacity: 0.35; transform-box: fill-box; transform-origin: center; }
 .fleet .cell rect { stroke-width: 2; transition: fill 0.4s, stroke 0.4s; }
 .fleet .cell-name { font-size: 20px; font-weight: 700; }
 .fleet .cell-phase { font-size: 15px; font-weight: 600; }
