@@ -468,8 +468,14 @@ export function FleetDiagram() {
         const [cls, hex = ""] = cell.id.split(":");
         const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
         const live = leases.some((l) => l.name === cell.owner && (l.expiresInMs ?? 0) > 0);
+        // The cell this database belongs to, in the look of its box in the
+        // node; a cell no node here owns is only in the bucket.
+        const look = cells.find((owned) => owned.id === cell.id)?.look ?? "inactive";
         return (
           <g key={cell.id} className={live ? undefined : "bucket-row-inactive"}>
+            <g className={`cell cell-${look}`}>
+              <rect x="72" y={626 + i * 26} width="18" height="18" rx="4" />
+            </g>
             <IoDots x={116} y={635 + i * 26} store="sqlite" target={hex} />
             <text x="130" y={640 + i * 26} className="bucket-chip start">
               cells/{cls}:{shortId(hex)} · SQLite{at}
