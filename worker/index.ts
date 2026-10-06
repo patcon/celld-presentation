@@ -54,21 +54,22 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     await this.broadcastPresence(ws);
     // So a phone that drops mid-touch doesn't leave its pointer stuck on screen.
     if ((await this.features()).main === "pointer") {
-      this.broadcastExcept({ type: "pointer", at: null, from: this.clientId(ws) }, AUDIENCE);
+      this.broadcastExcept({ type: "pointer", at: null, from: this.clientId(ws), via: this.connectionId(ws) }, AUDIENCE);
     }
   }
 
   async onMessage(ws: WebSocket, msg: ClientMessage) {
     const from = this.clientId(ws);
+    const via = this.connectionId(ws);
     switch (msg.type) {
       case "goTo":
         await this.ctx.storage.put("slide", msg.slide);
-        return this.broadcast({ ...(await this.state()), from });
+        return this.broadcast({ ...(await this.state()), from, via });
       case "toggle": {
         if (typeof DEFAULT_FEATURES[msg.feature] !== "boolean") return;
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, [msg.feature]: msg.on });
-        this.broadcast({ ...(await this.state()), from });
+        this.broadcast({ ...(await this.state()), from, via });
         if (msg.feature === "presence" && msg.on) await this.broadcastPresence();
         return;
       }
@@ -76,20 +77,20 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
         if (!MAIN_CONTROLS.includes(msg.main)) return;
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, main: msg.main });
-        return this.broadcast({ ...(await this.state()), from });
+        return this.broadcast({ ...(await this.state()), from, via });
       }
       case "point": {
         // Like reactions, relayed and never stored. Only screens draw pointers,
         // so phones aren't sent every move of everyone else's finger.
         if ((await this.features()).main !== "pointer") return;
         const at = msg.at && { x: unit(msg.at.x), y: unit(msg.at.y) };
-        return this.broadcastExcept({ type: "pointer", at, from }, AUDIENCE);
+        return this.broadcastExcept({ type: "pointer", at, from, via }, AUDIENCE);
       }
       case "react":
         // Reactions are fire-and-forget: relayed to everyone, never stored.
         if (!(await this.features()).reactions) return;
         if (!REACTION_EMOJIS.includes(msg.emoji)) return;
-        return this.broadcast({ type: "reaction", emoji: msg.emoji, from });
+        return this.broadcast({ type: "reaction", emoji: msg.emoji, from, via });
     }
   }
 
@@ -138,7 +139,7 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   sockets(leaving?: WebSocket): SocketsMessage {
     const sockets = this.ctx.getWebSockets().filter((ws) => ws !== leaving);
     const role = (ws: WebSocket) => (this.hasTag(ws, AUDIENCE) ? "audience" : this.hasTag(ws, SCREEN) ? "screen" : "other");
-    return { type: "sockets", sockets: sockets.map((ws) => ({ id: this.clientId(ws), role: role(ws) })) };
+    return { type: "sockets", sockets: sockets.map((ws) => ({ id: this.clientId(ws), conn: this.connectionId(ws), role: role(ws) })) };
   }
 
   broadcastSockets(leaving?: WebSocket) {

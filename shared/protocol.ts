@@ -29,9 +29,10 @@ export type ClientMessage =
   // Where this client is pointing, or null once they let go.
   | { type: "point"; at: Point | null };
 
-// `from` is the id of the client whose message caused this one.
-// The state snapshot sent on connect has no `from`.
-export type StateMessage = { type: "state"; slide: number; features: Features; from?: string };
+// `from` is the id of the client whose message caused this one, and `via` the
+// id of the socket it came in on (a client has one per tab).
+// The state snapshot sent on connect has neither.
+export type StateMessage = { type: "state"; slide: number; features: Features; from?: string; via?: string };
 // Only sent while the presence feature is on.
 export type PresenceMessage = { type: "presence"; people: Person[] };
 // Sent only to the client it belongs to: on connect if they have one, and after each upload or delete.
@@ -40,12 +41,12 @@ export type SelfieMessage = { type: "selfie"; selfie?: number };
 // What each open socket is: someone on /participation or /remote, a slides screen, or anything else.
 export type SocketRole = "audience" | "screen" | "other";
 // Sent to slides screens whenever a socket opens or closes, for the fleet diagram to label its sockets.
-export type SocketsMessage = { type: "sockets"; sockets: { id: string; role: SocketRole }[] };
+export type SocketsMessage = { type: "sockets"; sockets: { id: string; conn?: string; role: SocketRole }[] };
 export type ServerMessage =
   | StateMessage
   | SocketsMessage
   | PresenceMessage
   | SelfieMessage
-  | { type: "reaction"; emoji: Emoji; from: string }
+  | { type: "reaction"; emoji: Emoji; from: string; via?: string }
   // Only sent to non-audience screens, while the main control is the pointer.
-  | { type: "pointer"; at: Point | null; from: string };
+  | { type: "pointer"; at: Point | null; from: string; via?: string };

@@ -169,9 +169,15 @@ function useZaps(layer: React.RefObject<SVGGElement | null>) {
 
     return onDeckMessage((msg) => {
       const from = "from" in msg ? msg.from : undefined;
+      const via = "via" in msg ? msg.via : undefined;
       const svg = layer.current?.ownerSVGElement;
       if (!from || !svg) return;
-      const sender = [...svg.querySelectorAll("g[data-index]")].find((dot) => dot.getAttribute("data-client") === from);
+      // The socket it came in on, as a client's tabs share its id; else (from an
+      // older Deck) the first of that client's.
+      const dots = [...svg.querySelectorAll("g[data-index]")];
+      const sender =
+        (via && dots.find((dot) => dot.getAttribute("data-conn") === via)) ||
+        dots.find((dot) => dot.getAttribute("data-client") === from);
       if (sender) zap(sender);
     });
   }, [layer]);
@@ -180,7 +186,21 @@ function useZaps(layer: React.RefObject<SVGGElement | null>) {
 // A client at the far end of one of the node's sockets, tagged with its client
 // id. For an audience member, src/tether.ts pulls their presence circle over to
 // it, and moves it (and its line) as the two meet. A slides screen gets a screen icon.
-function ClientDot({ index, id, role, x, port }: { index: number; id?: string; role?: SocketRole; x: number; port: number }) {
+function ClientDot({
+  index,
+  id,
+  conn,
+  role,
+  x,
+  port,
+}: {
+  index: number;
+  id?: string;
+  conn?: string;
+  role?: SocketRole;
+  x: number;
+  port: number;
+}) {
   const circle = useRef<SVGCircleElement>(null);
   const line = useRef<SVGPathElement>(null);
 
@@ -205,7 +225,7 @@ function ClientDot({ index, id, role, x, port }: { index: number; id?: string; r
   }, [id, role, x, port]);
 
   return (
-    <g data-index={index} data-client={id} data-role={role}>
+    <g data-index={index} data-client={id} data-conn={conn} data-role={role}>
       <path ref={line} className="socket" d={socketPath(x, 50, port)} />
       <circle ref={circle} className="client" cx={x} cy="50" r="13" />
       {role === "screen" && (
@@ -292,7 +312,7 @@ export function FleetDiagram() {
 
       {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself. */}
       {clients.map(({ x, port }, i) => (
-        <ClientDot key={i} index={i} id={roster[i]?.id} role={roster[i]?.role} x={x} port={port} />
+        <ClientDot key={i} index={i} id={roster[i]?.id} conn={roster[i]?.conn} role={roster[i]?.role} x={x} port={port} />
       ))}
       <text x="1160" y="92" className="caption end halo">
         {sockets === 0 ? "no WebSockets open" : `${sockets} WebSocket${sockets === 1 ? "" : "s"} open${sockets > 14 ? " (14 shown)" : ""}`}

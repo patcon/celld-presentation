@@ -1,7 +1,8 @@
 import { DurableObject } from "cloudflare:workers";
 
 // Stored on each socket, so it survives hibernation.
-type Attachment = { id: string };
+// `id` is the client's (shared by its tabs); `conn` is this one socket's own.
+type Attachment = { id: string; conn?: string };
 
 // A Durable Object that speaks JSON over hibernatable WebSockets.
 // Subclasses implement the on* hooks and call send/broadcast.
@@ -22,7 +23,7 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
     this.ctx.acceptWebSocket(server, this.tags(request));
     // partysocket sends its client id as `?_pk=`; other clients get a fresh one.
     const id = new URL(request.url).searchParams.get("_pk")?.slice(0, 64) || crypto.randomUUID();
-    server.serializeAttachment({ id } satisfies Attachment);
+    server.serializeAttachment({ id, conn: crypto.randomUUID() } satisfies Attachment);
     await this.onConnect(server);
     return new Response(null, { status: 101, webSocket: client });
   }
@@ -69,6 +70,12 @@ export abstract class WebSocketServer<Env, In, Out> extends DurableObject<Env> {
 
   clientId(ws: WebSocket) {
     return (ws.deserializeAttachment() as Attachment).id;
+  }
+
+  // This socket's own id, unlike clientId, which every tab of a client shares.
+  // Sockets accepted before connection ids existed have none.
+  connectionId(ws: WebSocket) {
+    return (ws.deserializeAttachment() as Attachment).conn;
   }
 
   hasTag(ws: WebSocket, tag: string) {
