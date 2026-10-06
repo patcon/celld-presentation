@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { JoinQrCode } from "./components/JoinQrCode";
 import { MessageLog } from "./components/MessageLog";
+import { FleetDiagram } from "./components/FleetDiagram";
 import { Code, type Lang } from "./components/Code";
 // Snippets are hand-written, simplified versions of the real code, not imported from it.
 import wrangler1 from "../snippets/worker/wrangler-1.jsonc?raw";
@@ -30,6 +31,7 @@ function codeSteps(file: string, lang: Lang, steps: [title: string, code: string
 export const slides: Slide[] = [
   { title: "Durable Objects", body: "an actor system, at the infrastructure level" },
   { title: "Context", body: "durable-pi, and Durable Objects retrofitted the same day" },
+  { title: "Architecture: fleet, nodes, cells", content: <FleetDiagram /> },
   { title: "One object", body: "this deck's current slide lives in a single Durable Object" },
   ...codeSteps("wrangler.jsonc", "jsonc", [
     ["Code: a Worker", wrangler1],
