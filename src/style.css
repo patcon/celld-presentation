@@ -82,9 +82,9 @@ body { margin: 0; }
    `transform` applies inside `rotate`, so the rise follows the tilt and curves upright as it unwinds. */
 .reactions-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .reactions-layer.in-front { z-index: 2; }
-.floater { --rise: 30vh; position: absolute; bottom: 2rem; font-size: 3rem; line-height: 1; opacity: 0; animation: travel 2s ease-in-out forwards; }
+.floater { --rise: calc(30vh + 5rem); position: absolute; bottom: -3rem; font-size: 3rem; line-height: 1; opacity: 0; animation: travel 2s ease-in-out forwards; }
 @keyframes travel {
-  0%   { transform: translate(0, calc(var(--rise) * -0.625)); rotate: var(--starting-angle); scale: 0; opacity: 0; }
+  0%   { transform: translate(0, 0); rotate: var(--starting-angle); scale: 0; opacity: 0; }
   5%   { scale: 0.1; opacity: 0.2; }
   40%  { scale: 0.3; opacity: 1; }
   60%  { opacity: 1; }
