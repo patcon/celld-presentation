@@ -13,6 +13,8 @@ import deck4 from "../snippets/worker/deck-4.ts?raw";
 import slides1 from "../snippets/frontend/slides-1.tsx?raw";
 import slides2 from "../snippets/frontend/slides-2.tsx?raw";
 import slides3 from "../snippets/frontend/slides-3.tsx?raw";
+import selfie1 from "../snippets/frontend/selfie-1.tsx?raw";
+import selfie2 from "../snippets/frontend/selfie-2.tsx?raw";
 
 // A slide shows its title and body, or, if it has `content`, only that.
 // The title is always listed on /remote.
@@ -47,4 +49,8 @@ export const slides: Slide[] = [
   { title: "Message log (terminal)", content: <MessageLog layout="wide" /> },
   ...codeSteps("wrangler.jsonc", "jsonc", [["Code: + R2 bucket binding", wrangler3]]),
   ...codeSteps("worker/index.ts", "ts", [["Code: storing selfies in R2", deck4]]),
+  ...codeSteps("src/Selfie.tsx", "tsx", [
+    ["Code: uploading a selfie", selfie1],
+    ["Code: showing it", selfie2],
+  ]),
 ];
