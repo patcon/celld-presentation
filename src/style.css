@@ -52,6 +52,16 @@ body { margin: 0; }
 .fleet .isolate rect { fill: none; stroke: #8889; stroke-width: 1.5; stroke-dasharray: 5 4; }
 .fleet .isolate { animation: fade-in 0.4s ease-out; }
 @keyframes fade-in { from { opacity: 0; } }
+/* An HTTP route, and the buttons that call it. */
+.fleet .route { fill: Canvas; stroke: #8888; stroke-width: 1.5; }
+.fleet .route-label { font: 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fleet .route-method { font-weight: 700; }
+.fleet .request-button { cursor: pointer; outline: none; }
+.fleet .request-button circle { fill: #ef4444; stroke: #b91c1c; stroke-width: 1.5; transition: fill 0.15s; }
+.fleet .request-button text { fill: white; font-size: 13px; font-weight: 700; pointer-events: none; }
+.fleet .request-button:hover circle { fill: #f87171; }
+.fleet .request-button:focus-visible circle { stroke: CanvasText; stroke-width: 2.5; }
+.fleet .request-button.busy circle { fill: #b91c1c; }
 /* A stub in the Worker, and the line to the cell it addresses. */
 .fleet .stub { fill: Canvas; stroke: #8888; stroke-width: 1.5; }
 .fleet .stub-label { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }

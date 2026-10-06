@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useCelldState, type CelldView } from "../useCelldState";
 import { registerAnchor } from "../tether";
 import { onDeckMessage, useDeckSockets } from "../useDeck";
@@ -286,6 +286,55 @@ function useCommitFlashes(svg: React.RefObject<SVGSVGElement | null>, view: Cell
   }, [svg, view]);
 }
 
+// A little red button that sends a request when pressed, as a client would,
+// so it can sit beside whatever that request wakes up.
+function RequestButton({ x, y, label, method, url }: { x: number; y: number; label: string; method: string; url: string }) {
+  const [busy, setBusy] = useState(false);
+  const send = () => {
+    if (busy) return;
+    setBusy(true);
+    fetch(url, { method })
+      .catch(() => {})
+      .finally(() => setBusy(false));
+  };
+  return (
+    <g
+      className={`request-button${busy ? " busy" : ""}`}
+      transform={`translate(${x} ${y})`}
+      role="button"
+      tabIndex={0}
+      aria-label={`${method} ${url}`}
+      onClick={send}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        send();
+      }}
+    >
+      <circle r="10" />
+      <text y="5">{label}</text>
+    </g>
+  );
+}
+
+// An HTTP route the Worker serves, with buttons to call it.
+function RouteChip({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect className="route" width="458" height="30" rx="6" />
+      <text x="12" y="20" className="route-label start">
+        <tspan className="route-method">POST</tspan> /api/dummies/{"{:number}"}
+      </text>
+      <text x="252" y="20" className="caption start">
+        activate
+      </text>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <RequestButton key={n} x={304 + n * 26} y={15} label={String(n)} method="POST" url={`/api/dummies/${n}`} />
+      ))}
+    </g>
+  );
+}
+
 // A client at the far end of one of the node's sockets, tagged with its client
 // id. For an audience member, src/tether.ts pulls their presence circle over to
 // it, and moves it (and its line) as the two meet. A slides screen gets a screen icon.
@@ -447,6 +496,9 @@ export function FleetDiagram() {
           </g>
         ))}
       </g>
+
+      {/* Routes the Worker serves, which a client calls over HTTP. */}
+      <RouteChip x={330} y={96} />
 
       {/* The fleet, as the bucket's node leases describe it. */}
       <rect className="fleet-frame" x="20" y="140" width="1160" height="360" rx="16" />
