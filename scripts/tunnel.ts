@@ -1,5 +1,5 @@
-// Opens a Quick Tunnel with `wrangler tunnel quick-start`, and once its URL
-// shows up, prints a QR code for it so a phone can join without typing.
+// Opens a Quick Tunnel with `wrangler tunnel quick-start`, and once it's
+// connected, prints a QR code for its URL so a phone can join without typing.
 //
 //   node scripts/tunnel.ts [LOCAL_URL]
 import { spawn } from "node:child_process";
@@ -12,6 +12,9 @@ const tunnel = spawn("wrangler", ["tunnel", "quick-start", origin], {
   stdio: ["inherit", "pipe", "pipe"],
 });
 
+// cloudflared prints the URL first, then a screenful of diagnostics before the
+// tunnel is up, so hold the QR code until it registers, which is quieter too.
+let url: string | undefined;
 let shown = false;
 for (const [stream, out] of [
   [tunnel.stdout, process.stdout],
@@ -19,10 +22,11 @@ for (const [stream, out] of [
 ] as const) {
   stream.on("data", async (chunk: Buffer) => {
     out.write(chunk);
-    const match = !shown && chunk.toString().match(QUICK_TUNNEL_URL);
-    if (!match) return;
+    const text = chunk.toString();
+    url ??= text.match(QUICK_TUNNEL_URL)?.[0];
+    if (shown || !url || !text.includes("Registered tunnel connection")) return;
     shown = true;
-    console.log(`\n${await QRCode.toString(match[0], { type: "terminal", small: true })}\n  ${match[0]}\n`);
+    console.log(`\n${await QRCode.toString(url, { type: "terminal", small: true })}\n  ${url}\n`);
   });
 }
 
