@@ -37,7 +37,7 @@ body { margin: 0; }
 .join-qr { width: min(75vh, 75vw); height: auto; border-radius: 12px; }
 
 /* Fleet diagram (see components/FleetDiagram.tsx). Neutral greys work in both themes; cell phases carry the colour. */
-.fleet { width: min(94vw, calc(88vh * 1200 / 868)); height: auto; color: CanvasText; }
+.fleet { width: min(94vw, calc(88vh * 1200 / 864)); height: auto; color: CanvasText; }
 .fleet text { fill: currentColor; text-anchor: middle; font-size: 16px; }
 .fleet text.start { text-anchor: start; }
 .fleet text.end { text-anchor: end; }
@@ -82,7 +82,7 @@ body { margin: 0; }
 .fleet .hop-inactive { stroke: #888; stroke-dasharray: 3 6; opacity: 0.4; }
 @keyframes hop-wake { to { stroke-dashoffset: -11; } }
 .fleet .sync { stroke: #888; stroke-width: 2; stroke-dasharray: 5 5; }
-.fleet .bucket { fill: color-mix(in srgb, CanvasText 5%, Canvas); stroke: #8888; stroke-width: 2; }
+.fleet .bucket-icon { fill: color-mix(in srgb, CanvasText 8%, Canvas); stroke: #888; stroke-width: 2; stroke-linejoin: round; }
 .fleet .bucket-name { font-size: 22px; font-weight: 700; }
 .fleet .bucket-chip { font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .fleet .bucket-row-inactive { opacity: 0.55; }

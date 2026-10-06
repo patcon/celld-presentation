@@ -226,17 +226,16 @@ function IoDots({ x, y, store, target }: { x: number; y: number; store: "sqlite"
   );
 }
 
+// Laid out like a row of IoDots and its text, so it lines up under them.
 function IoLegend({ x, y }: { x: number; y: number }) {
   return (
-    <g transform={`translate(${x} ${y})`}>
+    <g>
       {(["read", "write"] as const).map((kind, i) => (
-        <g key={kind} transform={`translate(${i * 70} 0)`}>
-          <circle cy="-5" r="5" fill={IO_COLORS[kind]} />
-          <text x="10" className="caption start">
-            {kind}
-          </text>
-        </g>
+        <circle key={kind} cx={x - 14 + i * 14} cy={y - 5} r="5" fill={IO_COLORS[kind]} />
       ))}
+      <text x={x + 14} y={y} className="caption start">
+        read / write
+      </text>
     </g>
   );
 }
@@ -419,12 +418,12 @@ export function FleetDiagram() {
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
-      <svg className="fleet" viewBox="0 0 1200 868" role="img" aria-label="celld state unavailable">
-        <rect className="fleet-frame" x="20" y="20" width="1160" height="828" rx="16" />
-        <text x="600" y="424" className="node-name">
+      <svg className="fleet" viewBox="0 0 1200 864" role="img" aria-label="celld state unavailable">
+        <rect className="fleet-frame" x="20" y="20" width="1160" height="824" rx="16" />
+        <text x="600" y="422" className="node-name">
           No celld node to show
         </text>
-        <text x="600" y="459" className="caption">
+        <text x="600" y="457" className="caption">
           Run the deck with `pnpm celld:dev` to see its fleet, live.
         </text>
       </svg>
@@ -489,7 +488,7 @@ export function FleetDiagram() {
     .join(" · ");
 
   return (
-    <svg ref={fleet} className="fleet" viewBox="0 0 1200 868" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
+    <svg ref={fleet} className="fleet" viewBox="0 0 1200 864" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
@@ -517,7 +516,7 @@ export function FleetDiagram() {
       {/* Legend */}
       <g className="legend" transform="translate(40 22)">
         {LEGEND.map(([look, name, label], i) => (
-          <g key={look} className={`cell cell-${look}`} transform={`translate(${(i % 2) * 280} ${Math.floor(i / 2) * 44})`}>
+          <g key={look} className={`cell cell-${look}`} transform={`translate(${(i % 2) * 280} ${Math.floor(i / 2) * 36})`}>
             <rect width="28" height="28" rx="6" />
             <text x="38" y="20" className="legend-label start">
               <tspan className="legend-state">{name}</tspan> {label}
@@ -527,11 +526,11 @@ export function FleetDiagram() {
       </g>
 
       {/* Routes the Worker serves, which a client calls over HTTP. */}
-      <RouteChip x={330} y={96} />
+      <RouteChip x={40} y={98} />
 
       {/* The fleet, as the bucket's node leases describe it. */}
       <rect className="fleet-frame" x="20" y="140" width="1160" height="388" rx="16" />
-      <text x="36" y="130" className="caption start">
+      <text x="36" y="145" className="caption start halo">
         fleet · {live.length} live node{live.length === 1 ? "" : "s"}
         {leases.length > live.length ? ` (+${leases.length - live.length} expired)` : ""} · celld {version}
       </text>
@@ -623,22 +622,25 @@ export function FleetDiagram() {
       {/* The bucket: celld's source of truth, where any node can pick a cell up.
           Below the node, which the row of chips makes taller. */}
       <g transform="translate(0 28)">
-      <path className="sync" d="M600 486 V 528" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
-      <text x="612" y="512" className="caption start">
+      <path className="sync" d="M80 488 V 568" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
+      <text x="96" y="530" className="caption start">
         replicates writes · restores on wake
       </text>
-      <path className="bucket" d="M60 540 V 800 A 540 26 0 0 0 1140 800 V 540" />
-      <ellipse className="bucket" cx="600" cy="540" rx="540" ry="26" />
-      <text x="600" y="584" className="bucket-name">
-        bucket {node.bucket}
+      <g className="bucket-icon" transform="translate(64 574)">
+        <path d="M3 8 Q16 -10 29 8" fill="none" />
+        <path d="M2 8 L6 30 Q16 34 26 30 L30 8" />
+        <ellipse cx="16" cy="8" rx="14" ry="4" />
+      </g>
+      <text x="108" y="584" className="bucket-name start">
+        S3 bucket: {node.bucket}
       </text>
-      <text x="600" y="608" className="caption">
+      <text x="108" y="608" className="caption start">
         {bucket ? `${bucket.objects} objects · ${MB(bucket.bytes)}` : "contents unavailable"}
       </text>
       {/* Each cell's SQLite database, on the left, and the rest of the bucket on
           the right. Dots beside them flash for each read and write the Deck
           makes on a database or R2 bucket (see worker/trace.ts). */}
-      {bucket && <IoLegend x={960} y={608} />}
+      {bucket && <IoLegend x={116} y={640 + (Math.min(bucket.cells.length, BUCKET_ROWS) + Number(bucket.cells.length > BUCKET_ROWS)) * 26} />}
       {bucket?.cells.slice(0, BUCKET_ROWS).map((cell, i) => {
         const [cls, hex = ""] = cell.id.split(":");
         const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
