@@ -393,6 +393,12 @@ export function FleetDiagram() {
   }));
   const isolates = state.deployment?.isolates;
   const cellPool = isolates?.cells?.[project.name];
+  const workerIsolates = isolates?.stateless?.live ?? 0;
+  // The cells running in memory share the cell isolate; a dormant cell has
+  // left it, and once none are left celld retires it. Outlined from the first
+  // such cell to the last, so it takes in any between them too.
+  const inIsolate = shown.flatMap((cell, i) => (cell.look === "resident" || cell.look === "changing" ? [i] : []));
+  const isolateBox = cellPool?.live && inIsolate.length > 0 && { from: Math.min(...inIsolate), to: Math.max(...inIsolate) };
   const deployment = bucket?.deployments.find((d) => d.script === project.name);
 
   const nodeLine = [
@@ -443,12 +449,12 @@ export function FleetDiagram() {
       </g>
 
       {/* The fleet, as the bucket's node leases describe it. */}
-      <rect className="fleet-frame" x="20" y="140" width="1160" height="340" rx="16" />
+      <rect className="fleet-frame" x="20" y="140" width="1160" height="360" rx="16" />
       <text x="36" y="130" className="caption start">
         fleet · {live.length} live node{live.length === 1 ? "" : "s"}
         {leases.length > live.length ? ` (+${leases.length - live.length} expired)` : ""} · celld {version}
       </text>
-      <rect className="node" x="40" y="156" width="1120" height="308" rx="12" />
+      <rect className="node" x="40" y="156" width="1120" height="328" rx="12" />
       <text x="60" y="190" className="node-name start">
         node {node.name}
       </text>
@@ -464,7 +470,7 @@ export function FleetDiagram() {
         Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
       </text>
       <text x="1024" y="250" className="worker-label end">
-        isolates: {isolates?.stateless?.live ?? 0} stateless · {cellPool?.live ?? 0} cell{cellPool ? `, ${MB(cellPool.heap_bytes)} heap` : ""}
+        {workerIsolates === 0 ? "no isolate running" : `runs in ${workerIsolates} isolate${workerIsolates === 1 ? "" : "s"}`}
       </text>
 
       {/* A stub is the Worker's handle on a cell: getByName() makes one
@@ -480,6 +486,15 @@ export function FleetDiagram() {
               </text>
             </g>
           ),
+      )}
+
+      {isolateBox && (
+        <g className="isolate">
+          <rect x={50 + isolateBox.from * 330} y={CELL_TOP - 8} width={(isolateBox.to - isolateBox.from) * 330 + 320} height="134" rx="18" />
+          <text x={50 + isolateBox.to * 330 + 300} y={CELL_TOP + 131} className="caption end halo">
+            {cellPool.live === 1 ? "isolate" : `${cellPool.live} isolates`} · {MB(cellPool.heap_bytes)} memory
+          </text>
+        </g>
       )}
 
       {/* Each stub, from its chip in the Worker down to the cell it addresses.
@@ -516,14 +531,14 @@ export function FleetDiagram() {
           <rect key={i} className="port" x={landing - 4} y={CELL_TOP - 4} width="8" height="8" rx="2" />
         ))}
       {cells.length > 3 && (
-        <text x="1140" y="458" className="caption end">
+        <text x="1140" y="478" className="caption end">
           +{cells.length - 3} more cells
         </text>
       )}
 
       {/* The bucket: celld's source of truth, where any node can pick a cell up. */}
-      <path className="sync" d="M600 466 V 528" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
-      <text x="612" y="505" className="caption start">
+      <path className="sync" d="M600 486 V 528" markerStart="url(#arrow)" markerEnd="url(#arrow)" />
+      <text x="612" y="512" className="caption start">
         replicates writes · restores on wake
       </text>
       <path className="bucket" d="M60 540 V 680 A 540 26 0 0 0 1140 680 V 540" />

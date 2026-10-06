@@ -48,6 +48,10 @@ body { margin: 0; }
 .fleet .worker { fill: color-mix(in srgb, CanvasText 9%, Canvas); stroke: #8884; }
 .fleet .worker-label { font-size: 15px; opacity: 0.85; }
 .fleet circle.client { fill: var(--accent); opacity: 0.85; transform-box: fill-box; transform-origin: center; animation: arrive 0.3s ease-out; }
+/* The isolate the cells in memory share, which comes and goes with them. */
+.fleet .isolate rect { fill: none; stroke: #8889; stroke-width: 1.5; stroke-dasharray: 5 4; }
+.fleet .isolate { animation: fade-in 0.4s ease-out; }
+@keyframes fade-in { from { opacity: 0; } }
 /* A stub in the Worker, and the line to the cell it addresses. */
 .fleet .stub { fill: Canvas; stroke: #8888; stroke-width: 1.5; }
 .fleet .stub-label { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
@@ -86,7 +90,7 @@ body { margin: 0; }
 .fleet .cell-inactive rect { fill: none; stroke: #8888; stroke-dasharray: 4 4; }
 .fleet .legend-label { font-size: 15px; }
 .fleet .legend-state { font-weight: 700; }
-@media (prefers-reduced-motion: reduce) { .fleet .cell rect { transition: none; } .fleet circle.client, .fleet .hop-changing { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .fleet .cell rect { transition: none; } .fleet circle.client, .fleet .hop-changing, .fleet .isolate { animation: none; } }
 
 /* Remote */
 /* One screen tall: the participation controls stay put up top, and only the slide list scrolls. */
