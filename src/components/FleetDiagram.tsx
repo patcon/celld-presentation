@@ -74,6 +74,8 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
 
 // The cells' top edge, with a channel above it, below the worker, for the sockets.
 const CELL_TOP = 336;
+const CHANNEL_TOP = 298;
+const CHANNEL = CELL_TOP - 24 - CHANNEL_TOP;
 
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
@@ -378,14 +380,15 @@ export function FleetDiagram() {
   // Each socket enters the node through its own port by the node's top-right
   // corner, runs down past the worker and along the channel above the cells,
   // and drops into its own port by the cell's top-right corner. The rightmost
-  // socket turns lowest and lands rightmost, so none of them cross.
+  // socket turns lowest and lands rightmost, so none of them cross. The turns
+  // spread evenly down the channel between the worker and the cells.
   const n = Math.min(sockets, 14);
   const lane = Math.min(34, 80 / Math.max(1, n - 1));
   const cellRight = 60 + socketCell * 330 + 300;
   const clients = Array.from({ length: n }, (_, i) => ({
     x: 1140 - i * 34,
     port: 1140 - i * lane,
-    channel: CELL_TOP - 16 - i * Math.min(8, 24 / Math.max(1, n - 1)),
+    channel: n === 1 ? CHANNEL_TOP + CHANNEL / 2 : CHANNEL_TOP + (CHANNEL * (n - 1 - i)) / (n - 1),
     landing: cellRight - 20 - i * lane,
   }));
   const isolates = state.deployment?.isolates;
@@ -405,6 +408,9 @@ export function FleetDiagram() {
     <svg ref={fleet} className="fleet" viewBox="0 0 1200 720" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0 0 10 5 0 10z" fill="context-stroke" />
+        </marker>
+        <marker id="arrow-small" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
         </marker>
         {/* A packet's glow: a white-hot core fading out through amber, no filter needed. */}
@@ -453,28 +459,6 @@ export function FleetDiagram() {
         {nodeLine}
       </text>
 
-      {/* Each stub, from its chip in the Worker down to the cell it addresses.
-          Drawn first, so the sockets pass over them. */}
-      {shown.map(
-        (cell, i) =>
-          cell.stub && <path key={cell.id} className="stub-call" d={`M${100 + i * 330} 282 V ${CELL_TOP - 2}`} markerEnd="url(#arrow)" />,
-      )}
-
-      {/* The node holds each socket and hands its frames to the cell, which
-          sleeps through them while it hibernates (and wakes on the next one). */}
-      {socketCell >= 0 &&
-        clients.map(({ port, channel, landing }, i) => (
-          <path
-            key={i}
-            data-index={i}
-            className={`socket-hop hop-${shown[socketCell].look}`}
-            d={`M${port} 156 V ${channel - 8} Q ${port} ${channel}, ${port - 8} ${channel} H ${landing + 8} Q ${landing} ${channel}, ${landing} ${channel + 8} V ${CELL_TOP}`}
-          />
-        ))}
-      {clients.map(({ port }, i) => (
-        <rect key={i} className="port" x={port - 4} y="152" width="8" height="8" rx="2" />
-      ))}
-
       <rect className="worker" x="60" y="228" width="980" height="62" rx="8" />
       <text x="76" y="250" className="worker-label start">
         Worker {project.name} · deployment {state.deployment?.version.slice(0, 8) ?? "?"} (generation {state.deployment?.generation ?? "?"})
@@ -497,6 +481,28 @@ export function FleetDiagram() {
             </g>
           ),
       )}
+
+      {/* Each stub, from its chip in the Worker down to the cell it addresses.
+          Drawn before the sockets, so they pass over them. */}
+      {shown.map(
+        (cell, i) =>
+          cell.stub && <path key={cell.id} className="stub-call" d={`M${100 + i * 330} 282 V ${CELL_TOP - 1}`} markerEnd="url(#arrow-small)" />,
+      )}
+
+      {/* The node holds each socket and hands its frames to the cell, which
+          sleeps through them while it hibernates (and wakes on the next one). */}
+      {socketCell >= 0 &&
+        clients.map(({ port, channel, landing }, i) => (
+          <path
+            key={i}
+            data-index={i}
+            className={`socket-hop hop-${shown[socketCell].look}`}
+            d={`M${port} 156 V ${channel - 8} Q ${port} ${channel}, ${port - 8} ${channel} H ${landing + 8} Q ${landing} ${channel}, ${landing} ${channel + 8} V ${CELL_TOP}`}
+          />
+        ))}
+      {clients.map(({ port }, i) => (
+        <rect key={i} className="port" x={port - 4} y="152" width="8" height="8" rx="2" />
+      ))}
 
       {cells.length === 0 ? (
         <text x="600" y="360" className="caption">
