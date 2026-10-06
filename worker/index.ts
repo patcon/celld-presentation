@@ -218,7 +218,12 @@ app.get("/celld/state", async (c) => {
         [`Deck:${c.env.DECK.idFromName("main")}`]: "main",
         ...Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`Dummy:${c.env.DUMMY.idFromName(`dummy-${i + 1}`)}`, `dummy-${i + 1}`])),
       };
-      return c.json({ ...(await res.json<object>()), names }, 200, { "Cache-Control": "no-store" });
+      // The classes that report their own storage and R2 calls (see trace.ts);
+      // the diagram falls back to watching the bucket for the rest.
+      const traced = Object.entries({ Deck, Dummy })
+        .filter(([, cls]) => cls.prototype instanceof WebSocketServer)
+        .map(([name]) => name);
+      return c.json({ ...(await res.json<object>()), names, traced }, 200, { "Cache-Control": "no-store" });
     }
   } catch {}
   return c.json({ error: "celld state is unavailable" }, 503);

@@ -40,6 +40,8 @@ export type CelldView = {
     r2Buckets: { binding: string; bucket_name: string }[];
   };
   names: Record<string, string>;
+  // The Durable Object classes that report their own calls (an older worker sends none).
+  traced?: string[];
 };
 
 // Polls the celld node's live state through the worker. It's only there under

@@ -215,34 +215,67 @@ function IoLegend({ x, y }: { x: number; y: number }) {
   );
 }
 
+function flash(dot: SVGCircleElement, kind: IoKind) {
+  // A newer call restarts the flash, so a burst of them doesn't pile up.
+  dot.getAnimations().forEach((animation) => animation.cancel());
+  const fill = IO_COLORS[kind];
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  dot.animate(
+    [
+      { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
+      { fill, opacity: 1, transform: "none", offset: 0.3 },
+      { opacity: 0.35, transform: "none" },
+    ],
+    { duration: 700, easing: "ease-out" },
+  );
+}
+
+const ioDot = (svg: SVGSVGElement | null, store: "sqlite" | "r2", target: string | undefined, kind: IoKind) =>
+  svg?.querySelector<SVGCircleElement>(`.io-dot[data-store="${store}"][data-target="${target}"][data-io="${kind}"]`);
+
+// Flashes the calls a traced cell reports as it makes them.
 function useIoFlashes(svg: React.RefObject<SVGSVGElement | null>) {
+  useEffect(
+    () =>
+      onDeckMessage((msg) => {
+        if (msg.type !== "trace") return;
+        for (const event of msg.events) {
+          const kind: IoKind = event.write ? "write" : "read";
+          const dot = ioDot(svg.current, event.store, event.store === "r2" ? event.binding : event.cell, kind);
+          if (dot) flash(dot, kind);
+        }
+      }),
+    [svg],
+  );
+}
+
+// A cell that doesn't report its calls only shows up in the bucket, so flash
+// its database's write dot when a newer transaction lands there: a commit,
+// seen up to a poll late, rather than each call.
+//
+// This simplifies replication on purpose. One flash stands for whatever
+// changed the newest epoch and transaction between two polls: several
+// commits, or the first commit of a new epoch after the cell woke. It's the
+// same dot as a write call, though it's a different event, and snapshots and
+// whatever else celld writes for a cell don't show at all.
+function useCommitFlashes(svg: React.RefObject<SVGSVGElement | null>, view: CelldView | null) {
+  const seen = useRef<Map<string, string>>(undefined);
   useEffect(() => {
-    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const flash = (dot: SVGCircleElement, kind: IoKind) => {
-      // A newer call restarts the flash, so a burst of them doesn't pile up.
-      dot.getAnimations().forEach((animation) => animation.cancel());
-      const fill = IO_COLORS[kind];
-      dot.animate(
-        [
-          { fill, opacity: 1, transform: still ? "none" : "scale(1.7)" },
-          { fill, opacity: 1, transform: "none", offset: 0.3 },
-          { opacity: 0.35, transform: "none" },
-        ],
-        { duration: 700, easing: "ease-out" },
-      );
-    };
-    return onDeckMessage((msg) => {
-      if (msg.type !== "trace") return;
-      for (const event of msg.events) {
-        const target = event.store === "r2" ? event.binding : event.cell;
-        const kind: IoKind = event.write ? "write" : "read";
-        const dot = svg.current?.querySelector<SVGCircleElement>(
-          `.io-dot[data-store="${event.store}"][data-target="${target}"][data-io="${kind}"]`,
-        );
-        if (dot) flash(dot, kind);
-      }
-    });
-  }, [svg]);
+    if (!view?.bucket) return;
+    // The first poll only sets where each database starts from; after that, a
+    // database new to the bucket flashes for its first transaction too.
+    const first = !seen.current;
+    seen.current ??= new Map();
+    for (const cell of view.bucket.cells) {
+      const [cls, hex = ""] = cell.id.split(":");
+      const latest = cell.latest && `${cell.latest.epoch}:${cell.latest.txid}`;
+      const before = seen.current.get(cell.id);
+      if (latest) seen.current.set(cell.id, latest);
+      if (first || !latest || before === latest || view.traced?.includes(cls)) continue;
+      const dot = ioDot(svg.current, "sqlite", hex, "write");
+      if (dot) flash(dot, "write");
+    }
+  }, [svg, view]);
 }
 
 // A client at the far end of one of the node's sockets, tagged with its client
@@ -307,6 +340,7 @@ export function FleetDiagram() {
   useZaps(zaps);
   const fleet = useRef<SVGSVGElement>(null);
   useIoFlashes(fleet);
+  useCommitFlashes(fleet, view);
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
