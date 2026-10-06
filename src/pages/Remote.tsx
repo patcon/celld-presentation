@@ -10,10 +10,6 @@ const MAIN_CONTROL_LABELS: Record<MainControl, string> = {
   pointer: "Pointer",
 };
 
-const FEATURE_LABELS: Record<ToggleFeature, string> = {
-  reactions: "Reactions",
-  presence: "Presence",
-};
 
 // The audience preview lives in the URL (`/remote?preview`), so it survives the phone
 // reloading the tab after a screen lock, and the back gesture closes it.
@@ -42,6 +38,13 @@ export function Remote() {
     setPreviewing(false);
   };
 
+  const toggleFor = (feature: ToggleFeature, label: string) => (
+    <label className="toggle">
+      <input type="checkbox" checked={features[feature]} onChange={(e) => toggle(feature, e.target.checked)} />
+      {label}
+    </label>
+  );
+
   return (
     <div id="remote">
       <section>
@@ -50,6 +53,7 @@ export function Remote() {
             Participation ⛶
           </button>
         </h2>
+        {toggleFor("reactions", "Reactions")}
         <select
           className="main-control"
           aria-label="Main control"
@@ -62,12 +66,7 @@ export function Remote() {
             </option>
           ))}
         </select>
-        {(Object.keys(FEATURE_LABELS) as ToggleFeature[]).map((f) => (
-          <label key={f} className="toggle">
-            <input type="checkbox" checked={features[f]} onChange={(e) => toggle(f, e.target.checked)} />
-            {FEATURE_LABELS[f]}
-          </label>
-        ))}
+        {toggleFor("presence", "Presence")}
       </section>
       <section className="slide-list">
         <h2>Slides</h2>
