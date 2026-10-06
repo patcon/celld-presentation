@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "Interactive presentation on celld and Durable Objects",
   "scripts": {
-    "dev": "vite",
-    "dev:share": "SHARE=1 vite",
+    "dev": "pnpm wrangler:dev",
+    "wrangler:dev": "vite",
+    "wrangler:dev:share": "SHARE=1 vite",
+    "celld:build": "CELLD=1 vite build",
+    "celld:serve": "celld dev --host --port 5173 --watch-ignore 'dist/celld_presentation/**'",
+    "celld:dev": "pnpm celld:build && concurrently -k -n vite,celld \"CELLD=1 vite build --watch\" \"pnpm celld:serve\"",
+    "celld:dev:share": "pnpm celld:build && concurrently -k -n vite,celld,tunnel \"CELLD=1 vite build --watch\" \"pnpm celld:serve\" \"wrangler tunnel quick-start http://localhost:5173\"",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "vite build && wrangler deploy",
@@ -19,6 +24,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^10.0.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "wrangler": "^4.147.0"

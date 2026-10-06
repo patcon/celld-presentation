@@ -13,14 +13,24 @@ An interactive slide deck about [celld](https://celld.dev) and Cloudflare Durabl
 
 ## Develop
 
+The deck runs on either Wrangler (via the Cloudflare Vite plugin) or [celld](https://celld.dev), both on port 5173 and reachable on your LAN.
+
 ```sh
 pnpm install
-pnpm dev          # local dev server, reachable on your LAN
-pnpm dev:share    # also opens a public Quick Tunnel, so phones can join over https
+
+pnpm dev                  # same as wrangler:dev, for now
+pnpm wrangler:dev         # Vite dev server with HMR
+pnpm wrangler:dev:share   # also opens a public Quick Tunnel, so phones can join over https
+
+pnpm celld:dev            # serve with `celld dev`, rebuilding on change (refresh to see it)
+pnpm celld:dev:share      # also opens a Quick Tunnel via `wrangler tunnel quick-start`
+
 pnpm typecheck
 ```
 
 Selfies use the camera only over https (or localhost), so test them through the tunnel.
+
+celld keeps its local state (the deck, selfies) in `.celld/dev`; pass `--clean` to `celld dev` to start fresh. It rebuilds the worker itself on change, but it has no HMR and doesn't handle `not_found_handling: "single-page-application"`, so the worker serves the app shell for page routes like `/remote`.
 
 ## Slides
 

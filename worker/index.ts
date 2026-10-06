@@ -14,6 +14,7 @@ import { WebSocketServer } from "./WebSocketServer";
 type Env = {
   DECK: DurableObjectNamespace<Deck>;
   SELFIES: R2Bucket;
+  ASSETS: Fetcher;
 };
 
 const AUDIENCE = "audience";
@@ -161,4 +162,10 @@ app.get("/selfies/:id", async (c) => {
   });
 });
 
-export default app;
+// celld doesn't apply `not_found_handling: "single-page-application"`, so page
+// routes like /remote fall through to the worker; serve them the app shell.
+// (On Cloudflare they never get here: only /api/* runs the worker first.)
+export default new Hono<{ Bindings: Env }>()
+  .route("/", app)
+  .all("/api/*", (c) => c.notFound())
+  .get("*", (c) => c.env.ASSETS.fetch(new URL("/", c.req.url)));
