@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import usePartySocket from "partysocket/react";
 import {
   DEFAULT_FEATURES,
@@ -72,6 +72,25 @@ export function useDeck({
       }
     },
   });
+
+  // A phone that switches apps freezes the page without closing its socket, so
+  // the Deck would count it in presence until the connection finally died.
+  // Close it on the way out instead, and reconnect on the way back.
+  useEffect(() => {
+    const leave = () => socket.close();
+    const back = () => {
+      if (!socket.shouldReconnect) socket.reconnect();
+    };
+    const onVisibility = () => (document.visibilityState === "hidden" ? leave() : back());
+    document.addEventListener("visibilitychange", onVisibility);
+    addEventListener("pagehide", leave);
+    addEventListener("pageshow", back);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      removeEventListener("pagehide", leave);
+      removeEventListener("pageshow", back);
+    };
+  }, [socket]);
 
   const send = (msg: ClientMessage) => socket.send(JSON.stringify(msg));
 
