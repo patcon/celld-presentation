@@ -1,4 +1,6 @@
+import { useLayoutEffect, useRef } from "react";
 import { useCelldState, type CelldView } from "../useCelldState";
+import { registerAnchor, useTetherPeople } from "../tether";
 
 // How a cell (one Durable Object instance) is doing, in celld's own terms.
 // celld reports `resident` (in memory) and `dormant` (evicted from memory,
@@ -65,11 +67,49 @@ function CellBox({ cell, x, y }: { cell: CellView; x: number; y: number }) {
   );
 }
 
+const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
+
+// A client at the far end of one of the node's sockets, tagged with the client
+// id of the audience member it stands for. src/tether.ts pulls their presence
+// circle over to it, and moves it (and its line) as the two meet.
+function ClientDot({ id, x, port }: { id?: string; x: number; port: number }) {
+  const circle = useRef<SVGCircleElement>(null);
+  const line = useRef<SVGPathElement>(null);
+
+  useLayoutEffect(() => {
+    if (!id) return;
+    const move = (dx: number, dy: number) => {
+      circle.current?.setAttribute("cx", String(x + dx));
+      circle.current?.setAttribute("cy", String(50 + dy));
+      line.current?.setAttribute("d", socketPath(x + dx, 50 + dy, port));
+    };
+    const unregister = registerAnchor(id, {
+      home() {
+        const m = circle.current?.ownerSVGElement?.getScreenCTM();
+        return m ? { x: m.a * x + m.e, y: m.d * 50 + m.f, scale: m.a } : null;
+      },
+      apply: move,
+    });
+    return () => {
+      unregister();
+      move(0, 0);
+    };
+  }, [id, x, port]);
+
+  return (
+    <g data-client={id}>
+      <path ref={line} className="socket" d={socketPath(x, 50, port)} />
+      <circle ref={circle} className={id ? "client tagged" : "client"} cx={x} cy="50" r="13" />
+    </g>
+  );
+}
+
 // The deck's own celld fleet, as it is right now: its node, the cells that node
 // owns, and the bucket behind them, polled from the node while running under
 // `pnpm celld:dev`.
 export function FleetDiagram() {
   const view = useCelldState();
+  const people = useTetherPeople();
   if (!view) {
     return (
       <svg className="fleet" viewBox="0 0 1200 720" role="img" aria-label="celld state unavailable">
@@ -129,12 +169,10 @@ export function FleetDiagram() {
         </marker>
       </defs>
 
-      {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself. */}
+      {/* Clients: one dot per WebSocket the node holds open, each connected to the node itself.
+          celld only counts them, so the audience in the presence list take the first dots in turn. */}
       {clients.map(({ x, port }, i) => (
-        <g key={i}>
-          <path className="socket" d={`M${x} 63 C ${x} 115, ${port} 105, ${port} 156`} />
-          <circle className="client" cx={x} cy="50" r="13" />
-        </g>
+        <ClientDot key={i} id={people[i]} x={x} port={port} />
       ))}
       <text x="1160" y="92" className="caption end halo">
         {sockets === 0 ? "no WebSockets open" : `${sockets} WebSocket${sockets === 1 ? "" : "s"} open${sockets > 14 ? " (14 shown)" : ""}`}

@@ -142,6 +142,9 @@ body { margin: 0; }
    letting go springs it back with a damped wobble. */
 .presence li { transition: translate 0.8s var(--spring-back), scale 0.3s; }
 .presence li.pointing { z-index: 1; scale: 1.4; box-shadow: 0 0 0 2px Canvas, 0 4px 12px #0006; transition: translate 0.3s var(--spring-out), scale 0.3s; }
+/* Pulled to its WebSocket in the fleet diagram (see tether.ts), which moves it every frame itself. */
+.presence li[data-tethered] { transition: scale 0.3s; box-shadow: 0 0 0 2px var(--accent); }
+.presence li[data-attached] { scale: 0.5; }
 /* Leavers still need an animation, or they'd never get removed; a fade will do. */
 @media (prefers-reduced-motion: reduce) {
   .presence li, .presence li.pointing { animation: none; transition: none; }

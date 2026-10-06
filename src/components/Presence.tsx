@@ -1,7 +1,8 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { selfieUrl, type Person } from "../../shared/protocol";
 import { usePointer, type PointerStore } from "./Pointers";
 import { defaultAvatar } from "../avatar";
+import { registerAvatar, setPointing, setTetherPeople } from "../tether";
 
 // A stable colour per client, behind their picture while it loads.
 const hue = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
@@ -19,12 +20,16 @@ function merge(shown: Shown[], people: Person[]): Shown[] {
 
 // One audience member's circle. While they touch their pointer pad, it springs out of its slot
 // to the matching spot on screen and follows their finger; when they let go, it springs back.
+// Otherwise, src/tether.ts may pull it over to their WebSocket in the fleet diagram.
 function Avatar({ person, pointers, onGone }: { person: Shown; pointers?: PointerStore; onGone: () => void }) {
   const li = useRef<HTMLLIElement>(null);
   const at = usePointer(pointers, person.id);
 
+  useLayoutEffect(() => registerAvatar(person.id, li.current!), [person.id]);
+
   // `translate` doesn't move the slot (offsetLeft/Top), so measure from there to the pointer.
   useLayoutEffect(() => {
+    setPointing(person.id, !!at);
     const el = li.current;
     const list = el?.offsetParent;
     if (!el || !list) return;
@@ -33,7 +38,7 @@ function Avatar({ person, pointers, onGone }: { person: Shown; pointers?: Pointe
     const x = at.x * innerWidth - (box.left + el.offsetLeft + el.offsetWidth / 2);
     const y = at.y * innerHeight - (box.top + el.offsetTop + el.offsetHeight / 2);
     el.style.translate = `${x}px ${y}px`;
-  }, [at]);
+  }, [at, person.id]);
 
   const classes = [person.leaving && "leaving", at && "pointing"].filter(Boolean).join(" ");
   return (
@@ -58,6 +63,8 @@ export function Presence({ people, pointers }: { people: Person[]; pointers?: Po
     setPrevPeople(people);
     setShown(merge(shown, people));
   }
+
+  useEffect(() => setTetherPeople(shown.filter((s) => !s.leaving).map((s) => s.id)), [shown]);
 
   const remove = (id: string) => setShown((ss) => ss.filter((s) => !(s.id === id && s.leaving)));
 
