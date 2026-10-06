@@ -2,6 +2,8 @@
 
 An interactive slide deck about [celld](https://celld.dev) and Cloudflare Durable Objects, built on the thing it explains: the deck's state lives in a single Durable Object, and every screen syncs to it over WebSockets.
 
+https://github.com/user-attachments/assets/72f05178-f553-4137-b501-132c4b374e98
+
 ## Views
 
 | Path             | For                                                                 |
