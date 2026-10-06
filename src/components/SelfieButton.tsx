@@ -92,30 +92,36 @@ function Webcam({ onCapture, onCancel, onPickFile }: WebcamProps) {
   );
 }
 
-type Status = "idle" | "camera" | "uploading" | "error";
+type Status = "idle" | "camera" | "uploading" | "deleting" | "error";
 
-// Takes a selfie with the front camera (or a chosen photo, without one) and uploads it to the Deck's bucket.
+// Takes a selfie with the front camera (or a chosen photo, without one) and uploads it to the Deck's bucket,
+// or deletes it again.
 // `selfie` is when the Deck last stored one for this client, so it survives reloads and toggles.
 export function SelfieButton({ selfie }: { selfie?: number }) {
   const input = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>("idle");
 
-  const upload = async (getJpeg: () => Promise<Blob>) => {
-    setStatus("uploading");
+  // The Deck sends this client its new `selfie` (or none) before responding.
+  const request = async (busy: Status, init: () => Promise<RequestInit>) => {
+    setStatus(busy);
     try {
-      const jpeg = await getJpeg();
-      const res = await fetch(`/api/selfies/${encodeURIComponent(DECK_SOCKET.id)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "image/jpeg" },
-        body: jpeg,
-      });
+      const res = await fetch(`/api/selfies/${encodeURIComponent(DECK_SOCKET.id)}`, await init());
       if (!res.ok) throw new Error(await res.text());
-      // The Deck sends the new `selfie` time to this client before responding.
       setStatus("idle");
     } catch {
       setStatus("error");
     }
   };
+
+  const upload = (getJpeg: () => Promise<Blob>) =>
+    request("uploading", async () => ({
+      method: "PUT",
+      headers: { "Content-Type": "image/jpeg" },
+      body: await getJpeg(),
+    }));
+
+  const remove = () => request("deleting", async () => ({ method: "DELETE" }));
+  const busy = status === "uploading" || status === "deleting";
 
   const pickFile = () => {
     setStatus("idle");
@@ -132,10 +138,17 @@ export function SelfieButton({ selfie }: { selfie?: number }) {
         />
       ) : (
         // Until they take one, the generated avatar they show up as.
-        <img
-          src={selfie ? selfieUrl({ id: DECK_SOCKET.id, selfie }) : defaultAvatar(DECK_SOCKET.id)}
-          alt={selfie ? "Your selfie" : "Your avatar"}
-        />
+        <div className="selfie-photo">
+          <img
+            src={selfie ? selfieUrl({ id: DECK_SOCKET.id, selfie }) : defaultAvatar(DECK_SOCKET.id)}
+            alt={selfie ? "Your selfie" : "Your avatar"}
+          />
+          {selfie && (
+            <button className="selfie-delete" onClick={remove} disabled={busy} aria-label="Delete selfie">
+              ❌
+            </button>
+          )}
+        </div>
       )}
       <input
         ref={input}
@@ -150,11 +163,11 @@ export function SelfieButton({ selfie }: { selfie?: number }) {
         }}
       />
       {status !== "camera" && (
-        <button onClick={() => (streamCamera() ? setStatus("camera") : pickFile())} disabled={status === "uploading"}>
+        <button onClick={() => (streamCamera() ? setStatus("camera") : pickFile())} disabled={busy}>
           {status === "uploading" ? "Sending…" : selfie ? "📸 Retake selfie" : "📸 Take a selfie"}
         </button>
       )}
-      {status === "error" && <p className="selfie-error">That didn't send. Try again?</p>}
+      {status === "error" && <p className="selfie-error">That didn't go through. Try again?</p>}
     </div>
   );
 }

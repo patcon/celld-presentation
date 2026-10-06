@@ -98,6 +98,14 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
     return true;
   }
 
+  // Called over RPC by the delete route. Allowed whatever the main control, so anyone can take theirs down.
+  async deleteSelfie(id: string) {
+    await this.env.SELFIES.delete(selfieKey(id));
+    await this.ctx.storage.delete(`selfie:${id}`);
+    this.sendToClient(id, { type: "selfie" });
+    await this.broadcastPresence();
+  }
+
   async state(): Promise<StateMessage> {
     const slide = (await this.ctx.storage.get<number>("slide")) ?? 0;
     return { type: "state", slide, features: await this.features() };
@@ -136,6 +144,11 @@ app.put("/selfies/:id", async (c) => {
   if (image.byteLength > MAX_SELFIE_BYTES) return c.text("Selfie too large", 413);
   const saved = await c.env.DECK.getByName("main").saveSelfie(id, image);
   return saved ? c.body(null, 204) : c.text("Selfies are turned off", 403);
+});
+
+app.delete("/selfies/:id", async (c) => {
+  await c.env.DECK.getByName("main").deleteSelfie(c.req.param("id").slice(0, 64));
+  return c.body(null, 204);
 });
 
 app.get("/selfies/:id", async (c) => {

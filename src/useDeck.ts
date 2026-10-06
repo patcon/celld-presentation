@@ -48,7 +48,7 @@ export function useDeck({
   const [slide, setSlide] = useState(0);
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
   const [people, setPeople] = useState<Person[]>([]);
-  // When this client last uploaded a selfie, if ever.
+  // When this client last uploaded a selfie, unless they've none (or deleted it).
   const [selfie, setSelfie] = useState<number>();
 
   const socket = usePartySocket({

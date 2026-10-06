@@ -34,8 +34,9 @@ export type ClientMessage =
 export type StateMessage = { type: "state"; slide: number; features: Features; from?: string };
 // Only sent while the presence feature is on.
 export type PresenceMessage = { type: "presence"; people: Person[] };
-// Sent only to the client it belongs to: on connect if they have one, and after each upload.
-export type SelfieMessage = { type: "selfie"; selfie: number };
+// Sent only to the client it belongs to: on connect if they have one, and after each upload or delete.
+// No `selfie` means they deleted it.
+export type SelfieMessage = { type: "selfie"; selfie?: number };
 export type ServerMessage =
   | StateMessage
   | PresenceMessage

@@ -62,6 +62,9 @@ body { margin: 0; }
 .selfie button:active { transform: scale(0.96); }
 .selfie button:disabled { opacity: 0.6; }
 .selfie-error { margin: 0; color: #e5484d; }
+/* The delete button sits on the photo's rim, top right. */
+.selfie-photo { position: relative; }
+.selfie .selfie-delete { position: absolute; top: 0.25rem; right: 0.25rem; width: 2.5rem; height: 2.5rem; padding: 0; font-size: 1rem; border-color: #8884; background: Canvas; touch-action: manipulation; }
 /* Mirrored like a mirror, and cropped to the circle the selfie will show in. */
 .webcam { display: grid; justify-items: center; gap: 1rem; }
 .webcam video { width: min(20rem, 80vw); aspect-ratio: 1; border-radius: 50%; object-fit: cover; scale: -1 1; background: #8882; }
