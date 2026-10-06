@@ -1,11 +1,11 @@
 // Opens a Quick Tunnel with `wrangler tunnel quick-start`, and once its URL
 // shows up, prints a QR code for it so a phone can join without typing.
 //
-//   node scripts/tunnel.ts [LOCAL_URL] [PATH]
+//   node scripts/tunnel.ts [LOCAL_URL]
 import { spawn } from "node:child_process";
 import QRCode from "qrcode";
 
-const [origin = "http://localhost:5173", path = "/remote"] = process.argv.slice(2);
+const [origin = "http://localhost:5173"] = process.argv.slice(2);
 const QUICK_TUNNEL_URL = /https:\/\/[a-z0-9-]+\.trycloudflare\.com/;
 
 const tunnel = spawn("wrangler", ["tunnel", "quick-start", origin], {
@@ -22,8 +22,7 @@ for (const [stream, out] of [
     const match = !shown && chunk.toString().match(QUICK_TUNNEL_URL);
     if (!match) return;
     shown = true;
-    const url = match[0] + path;
-    console.log(`\n${await QRCode.toString(url, { type: "terminal", small: true })}\n  ${url}\n`);
+    console.log(`\n${await QRCode.toString(match[0], { type: "terminal", small: true })}\n  ${match[0]}\n`);
   });
 }
 
