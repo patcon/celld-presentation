@@ -37,7 +37,7 @@ body { margin: 0; }
 .join-qr { width: min(75vh, 75vw); height: auto; border-radius: 12px; }
 
 /* Fleet diagram (see components/FleetDiagram.tsx). Neutral greys work in both themes; cell phases carry the colour. */
-.fleet { width: min(94vw, calc(88vh * 1200 / 720)); height: auto; color: CanvasText; }
+.fleet { width: min(94vw, calc(88vh * 1200 / 840)); height: auto; color: CanvasText; }
 .fleet text { fill: currentColor; text-anchor: middle; font-size: 16px; }
 .fleet text.start { text-anchor: start; }
 .fleet text.end { text-anchor: end; }

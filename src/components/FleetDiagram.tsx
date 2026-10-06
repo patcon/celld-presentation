@@ -77,6 +77,9 @@ const CELL_TOP = 336;
 const CHANNEL_TOP = 298;
 const CHANNEL = CELL_TOP - 24 - CHANNEL_TOP;
 
+// How many cells' databases the bucket lists before it sums up the rest.
+const BUCKET_ROWS = 6;
+
 const socketPath = (x: number, y: number, port: number) => `M${x} ${y + 13} C ${x} 115, ${port} 105, ${port} 156`;
 
 // Dots fill in from the right: slides screens first, as they come and go least,
@@ -401,12 +404,12 @@ export function FleetDiagram() {
   const roster = [...useDeckSockets()].sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role));
   if (!view) {
     return (
-      <svg className="fleet" viewBox="0 0 1200 720" role="img" aria-label="celld state unavailable">
-        <rect className="fleet-frame" x="20" y="20" width="1160" height="680" rx="16" />
-        <text x="600" y="350" className="node-name">
+      <svg className="fleet" viewBox="0 0 1200 840" role="img" aria-label="celld state unavailable">
+        <rect className="fleet-frame" x="20" y="20" width="1160" height="800" rx="16" />
+        <text x="600" y="410" className="node-name">
           No celld node to show
         </text>
-        <text x="600" y="385" className="caption">
+        <text x="600" y="445" className="caption">
           Run the deck with `pnpm celld:dev` to see its fleet, live.
         </text>
       </svg>
@@ -460,7 +463,7 @@ export function FleetDiagram() {
     .join(" · ");
 
   return (
-    <svg ref={fleet} className="fleet" viewBox="0 0 1200 720" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
+    <svg ref={fleet} className="fleet" viewBox="0 0 1200 840" role="img" aria-label={`celld fleet: node ${node.name}, ${cells.length} cells`}>
       <defs>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0 0 10 5 0 10z" fill="context-stroke" />
@@ -593,7 +596,7 @@ export function FleetDiagram() {
       <text x="612" y="512" className="caption start">
         replicates writes · restores on wake
       </text>
-      <path className="bucket" d="M60 540 V 680 A 540 26 0 0 0 1140 680 V 540" />
+      <path className="bucket" d="M60 540 V 800 A 540 26 0 0 0 1140 800 V 540" />
       <ellipse className="bucket" cx="600" cy="540" rx="540" ry="26" />
       <text x="600" y="584" className="bucket-name">
         bucket {node.bucket}
@@ -605,7 +608,7 @@ export function FleetDiagram() {
           the right. Dots beside them flash for each read and write the Deck
           makes on a database or R2 bucket (see worker/trace.ts). */}
       {bucket && <IoLegend x={960} y={608} />}
-      {bucket?.cells.slice(0, 2).map((cell, i) => {
+      {bucket?.cells.slice(0, BUCKET_ROWS).map((cell, i) => {
         const [cls, hex = ""] = cell.id.split(":");
         const at = cell.latest ? ` · epoch ${cell.latest.epoch}, txn ${cell.latest.txid}` : "";
         const live = leases.some((l) => l.name === cell.owner && (l.expiresInMs ?? 0) > 0);
@@ -624,9 +627,9 @@ export function FleetDiagram() {
           </g>
         );
       })}
-      {bucket && bucket.cells.length > 2 && (
-        <text x="130" y="692" className="bucket-chip start">
-          +{bucket.cells.length - 2} more databases
+      {bucket && bucket.cells.length > BUCKET_ROWS && (
+        <text x="130" y={640 + BUCKET_ROWS * 26} className="bucket-chip start">
+          +{bucket.cells.length - BUCKET_ROWS} more databases
         </text>
       )}
       {bucket &&
