@@ -162,6 +162,18 @@ app.get("/selfies/:id", async (c) => {
   });
 });
 
+// Under `pnpm celld:dev`, scripts/celld-operator.ts forwards the celld node's
+// operator `GET /state` here. Under wrangler or on Cloudflare nothing listens.
+const CELLD_OPERATOR = "http://127.0.0.1:5175";
+
+app.get("/celld/state", async (c) => {
+  try {
+    const res = await fetch(`${CELLD_OPERATOR}/state`);
+    if (res.ok) return new Response(res.body, { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
+  } catch {}
+  return c.json({ error: "celld state is unavailable" }, 503);
+});
+
 // celld doesn't apply `not_found_handling: "single-page-application"`, so page
 // routes like /remote fall through to the worker; serve them the app shell.
 // (On Cloudflare they never get here: only /api/* runs the worker first.)

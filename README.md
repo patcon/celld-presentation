@@ -33,6 +33,8 @@ Selfies use the camera only over https (or localhost), so test them through the 
 
 celld keeps its local state (the deck, selfies) in `.celld/dev`; pass `--clean` to `celld dev` to start fresh. It rebuilds the worker itself on change, but it has no HMR and doesn't handle `not_found_handling: "single-page-application"`, so the worker serves the app shell for page routes like `/remote`.
 
+Under `pnpm celld:dev`, the app can read the node's live counters from `/api/celld/state` (see [`src/useCelldState.ts`](src/useCelldState.ts)). celld puts its operator API on a random loopback port that changes whenever it restarts the node, so [`scripts/celld-operator.ts`](scripts/celld-operator.ts) finds it and forwards just `GET /state` on `127.0.0.1:5175`, for the worker to fetch. Idle cells are evicted after 10s (`CELLD_IDLE_EVICT_S`), so the Deck can be seen going dormant.
+
 ## Slides
 
 Slides are defined in [`src/content.tsx`](src/content.tsx). Code slides use hand-written snippets from [`snippets/`](snippets), highlighted with [Shiki](https://shiki.style) and animated between steps with [Magic Move](https://shiki.style/packages/magic-move). Mark lines with Shiki-style comments: `// [!code ++]`, `--`, `focus` or `highlight` (in JSX, `{/* [!code ++] */}`).
