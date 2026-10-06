@@ -24,6 +24,7 @@ pnpm wrangler:dev:share   # also opens a public Quick Tunnel, so phones can join
 
 pnpm celld:dev            # serve with `celld dev`, rebuilding on change (refresh to see it)
 pnpm celld:dev:share      # also opens a Quick Tunnel, and prints a QR code for it
+pnpm celld:state          # print the running node's live counters (`GET /state`)
 
 pnpm typecheck
 ```
