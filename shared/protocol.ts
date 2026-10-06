@@ -3,9 +3,17 @@
 export const REACTION_EMOJIS = ["❤️", "👏", "🔥", "😂", "🤯", "🎉"] as const;
 export type Emoji = (typeof REACTION_EMOJIS)[number];
 
-// Participation features the presenter can toggle for /participation.
-export type Features = { reactions: boolean; selfies: boolean; presence: boolean };
-export const DEFAULT_FEATURES: Features = { reactions: false, selfies: false, presence: false };
+// What fills the main area of /participation; only one at a time.
+export const MAIN_CONTROLS = ["none", "selfies", "pointer"] as const;
+export type MainControl = (typeof MAIN_CONTROLS)[number];
+
+// Participation features the presenter sets for /participation.
+export type Features = { reactions: boolean; presence: boolean; main: MainControl };
+export type ToggleFeature = "reactions" | "presence";
+export const DEFAULT_FEATURES: Features = { reactions: false, presence: false, main: "none" };
+
+// A spot on screen, as fractions (0–1) of its width and height, so it maps between screens of any size.
+export type Point = { x: number; y: number };
 
 // An audience member with /participation open. `selfie` is when they last uploaded one,
 // so it doubles as a cache-buster for `selfieUrl`.
@@ -15,8 +23,11 @@ export const selfieUrl = ({ id, selfie }: Person) => `/api/selfies/${encodeURICo
 
 export type ClientMessage =
   | { type: "goTo"; slide: number }
-  | { type: "toggle"; feature: keyof Features; on: boolean }
-  | { type: "react"; emoji: Emoji };
+  | { type: "toggle"; feature: ToggleFeature; on: boolean }
+  | { type: "setMain"; main: MainControl }
+  | { type: "react"; emoji: Emoji }
+  // Where this client is pointing, or null once they let go.
+  | { type: "point"; at: Point | null };
 
 // `from` is the id of the client whose message caused this one.
 // The state snapshot sent on connect has no `from`.
@@ -29,4 +40,6 @@ export type ServerMessage =
   | StateMessage
   | PresenceMessage
   | SelfieMessage
-  | { type: "reaction"; emoji: Emoji; from: string };
+  | { type: "reaction"; emoji: Emoji; from: string }
+  // Only sent to non-audience screens, while the main control is the pointer.
+  | { type: "pointer"; at: Point | null; from: string };

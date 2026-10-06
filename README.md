@@ -9,7 +9,7 @@ An interactive slide deck about [celld](https://celld.dev) and Cloudflare Durabl
 | `/`              | The slides, as a passive display                                    |
 | `/present`       | The slides, with ← / → keyboard control                             |
 | `/remote`        | Presenter remote: jump to any slide, toggle audience features       |
-| `/participation` | Audience phones: emoji reactions, selfies and presence, when enabled |
+| `/participation` | Audience phones: emoji reactions, presence, and selfies or a pointer, when enabled |
 
 ## Develop
 

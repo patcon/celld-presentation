@@ -3,6 +3,7 @@ import { slides } from "../content";
 import { useDeck } from "../useDeck";
 import { useFloatingReactions } from "../components/FloatingReactions";
 import { Presence } from "../components/Presence";
+import { usePointerStore } from "../components/Pointers";
 
 const NEXT_KEYS = ["ArrowRight", "PageDown"];
 const PREV_KEYS = ["ArrowLeft", "PageUp"];
@@ -10,7 +11,13 @@ const PREV_KEYS = ["ArrowLeft", "PageUp"];
 // `/` is a passive display; `/present` is the same view with keyboard control.
 export function Slides({ keyboard = false }: { keyboard?: boolean }) {
   const reactions = useFloatingReactions({ inFront: true });
-  const { slide, goTo, features, people } = useDeck({ onReaction: reactions.add });
+  const pointers = usePointerStore();
+  const { slide, goTo, features, people } = useDeck({ onReaction: reactions.add, onPointer: pointers.set });
+
+  // Nobody lifts a finger when the pointer gets switched off, so clear them all.
+  useEffect(() => {
+    if (features.main !== "pointer") pointers.clear();
+  }, [features.main, pointers.clear]);
 
   useEffect(() => {
     if (!keyboard) return;
@@ -31,7 +38,7 @@ export function Slides({ keyboard = false }: { keyboard?: boolean }) {
     <>
       {reactions.layer}
       {/* Always mounted: turning presence off empties the list, so everyone animates out. */}
-      <Presence people={people} />
+      <Presence people={people} pointers={pointers} />
       <main id="slide">
         {s.content ?? (
           <>

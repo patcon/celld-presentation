@@ -5,8 +5,11 @@ import {
   type ClientMessage,
   type Emoji,
   type Features,
+  type MainControl,
   type Person,
+  type Point,
   type ServerMessage,
+  type ToggleFeature,
 } from "../shared/protocol";
 
 const randomId = () => crypto.randomUUID?.() ?? Math.random().toString(16).slice(2);
@@ -33,7 +36,15 @@ export const DECK_SOCKET = {
 // partysocket reconnects automatically (e.g. after a phone wakes from sleep),
 // and the Deck re-sends full state on every connect.
 // `audience` marks this client as someone to count in presence.
-export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji: Emoji) => void; audience?: boolean } = {}) {
+export function useDeck({
+  onReaction,
+  onPointer,
+  audience = false,
+}: {
+  onReaction?: (emoji: Emoji) => void;
+  onPointer?: (from: string, at: Point | null) => void;
+  audience?: boolean;
+} = {}) {
   const [slide, setSlide] = useState(0);
   const [features, setFeatures] = useState<Features>(DEFAULT_FEATURES);
   const [people, setPeople] = useState<Person[]>([]);
@@ -56,6 +67,8 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
         setSelfie(msg.selfie);
       } else if (msg.type === "reaction") {
         onReaction?.(msg.emoji);
+      } else if (msg.type === "pointer") {
+        onPointer?.(msg.from, msg.at);
       }
     },
   });
@@ -68,7 +81,9 @@ export function useDeck({ onReaction, audience = false }: { onReaction?: (emoji:
     people,
     selfie,
     goTo: (slide: number) => send({ type: "goTo", slide }),
-    toggle: (feature: keyof Features, on: boolean) => send({ type: "toggle", feature, on }),
+    toggle: (feature: ToggleFeature, on: boolean) => send({ type: "toggle", feature, on }),
+    setMain: (main: MainControl) => send({ type: "setMain", main }),
     react: (emoji: Emoji) => send({ type: "react", emoji }),
+    point: (at: Point | null) => send({ type: "point", at }),
   };
 }

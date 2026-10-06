@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { selfieUrl, type Person } from "../../shared/protocol";
+import { usePointer, type PointerStore } from "./Pointers";
 
 // A stable colour per client, for people without a selfie yet.
 const hue = (id: string) => [...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 0);
@@ -15,8 +16,40 @@ function merge(shown: Shown[], people: Person[]): Shown[] {
   return [...kept, ...people.filter((p) => !known.has(p.id))];
 }
 
+// One audience member's circle. While they touch their pointer pad, it springs out of its slot
+// to the matching spot on screen and follows their finger; when they let go, it springs back.
+function Avatar({ person, pointers, onGone }: { person: Shown; pointers?: PointerStore; onGone: () => void }) {
+  const li = useRef<HTMLLIElement>(null);
+  const at = usePointer(pointers, person.id);
+
+  // `translate` doesn't move the slot (offsetLeft/Top), so measure from there to the pointer.
+  useLayoutEffect(() => {
+    const el = li.current;
+    const list = el?.offsetParent;
+    if (!el || !list) return;
+    if (!at) return void el.style.removeProperty("translate");
+    const box = list.getBoundingClientRect();
+    const x = at.x * innerWidth - (box.left + el.offsetLeft + el.offsetWidth / 2);
+    const y = at.y * innerHeight - (box.top + el.offsetTop + el.offsetHeight / 2);
+    el.style.translate = `${x}px ${y}px`;
+  }, [at]);
+
+  const classes = [person.leaving && "leaving", at && "pointing"].filter(Boolean).join(" ");
+  return (
+    <li
+      ref={li}
+      className={classes || undefined}
+      style={{ "--hue": hue(person.id) } as React.CSSProperties}
+      onAnimationEnd={person.leaving ? onGone : undefined}
+    >
+      {person.selfie && <img src={selfieUrl(person)} alt="" />}
+    </li>
+  );
+}
+
 // Everyone on /participation, as circles down the right edge of the slides.
-export function Presence({ people }: { people: Person[] }) {
+// With `pointers`, anyone pointing has their circle pulled out to where they point.
+export function Presence({ people, pointers }: { people: Person[]; pointers?: PointerStore }) {
   const [shown, setShown] = useState<Shown[]>(people);
   const [prevPeople, setPrevPeople] = useState(people);
   // Merge during render when the list changes, so departures start animating on the same frame.
@@ -30,14 +63,7 @@ export function Presence({ people }: { people: Person[] }) {
   return (
     <ul className="presence" aria-label={`${people.length} in the audience`}>
       {shown.map((p) => (
-        <li
-          key={p.id}
-          className={p.leaving ? "leaving" : undefined}
-          style={{ "--hue": hue(p.id) } as React.CSSProperties}
-          onAnimationEnd={p.leaving ? () => remove(p.id) : undefined}
-        >
-          {p.selfie && <img src={selfieUrl(p)} alt="" />}
-        </li>
+        <Avatar key={p.id} person={p} pointers={pointers} onGone={() => remove(p.id)} />
       ))}
     </ul>
   );

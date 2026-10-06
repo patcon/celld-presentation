@@ -2,11 +2,16 @@ import { useEffect, useState } from "react";
 import { slides } from "../content";
 import { useDeck } from "../useDeck";
 import { AudiencePreview } from "../components/AudiencePreview";
-import type { Features } from "../../shared/protocol";
+import { MAIN_CONTROLS, type MainControl, type ToggleFeature } from "../../shared/protocol";
 
-const FEATURE_LABELS: Record<keyof Features, string> = {
-  reactions: "Reactions",
+const MAIN_CONTROL_LABELS: Record<MainControl, string> = {
+  none: "None",
   selfies: "Selfies",
+  pointer: "Pointer",
+};
+
+const FEATURE_LABELS: Record<ToggleFeature, string> = {
+  reactions: "Reactions",
   presence: "Presence",
 };
 
@@ -15,7 +20,7 @@ const FEATURE_LABELS: Record<keyof Features, string> = {
 const previewInUrl = () => new URLSearchParams(location.search).has("preview");
 
 export function Remote() {
-  const { slide, goTo, features, toggle } = useDeck();
+  const { slide, goTo, features, toggle, setMain } = useDeck();
   const [previewing, setPreviewing] = useState(previewInUrl);
 
   useEffect(() => {
@@ -45,7 +50,19 @@ export function Remote() {
             Participation ⛶
           </button>
         </h2>
-        {(Object.keys(FEATURE_LABELS) as (keyof Features)[]).map((f) => (
+        <select
+          className="main-control"
+          aria-label="Main control"
+          value={features.main}
+          onChange={(e) => setMain(e.target.value as MainControl)}
+        >
+          {MAIN_CONTROLS.map((m) => (
+            <option key={m} value={m}>
+              {MAIN_CONTROL_LABELS[m]}
+            </option>
+          ))}
+        </select>
+        {(Object.keys(FEATURE_LABELS) as ToggleFeature[]).map((f) => (
           <label key={f} className="toggle">
             <input type="checkbox" checked={features[f]} onChange={(e) => toggle(f, e.target.checked)} />
             {FEATURE_LABELS[f]}

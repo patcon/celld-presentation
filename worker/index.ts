@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import {
   DEFAULT_FEATURES,
+  MAIN_CONTROLS,
   REACTION_EMOJIS,
   type ClientMessage,
   type Features,
@@ -19,6 +20,8 @@ const AUDIENCE = "audience";
 const MAX_SELFIE_BYTES = 1024 * 1024;
 
 const selfieKey = (id: string) => `selfies/${id}.jpg`;
+
+const unit = (n: unknown) => Math.min(Math.max(Number(n) || 0, 0), 1);
 
 // One Deck object holds the shared state for the whole presentation.
 // Every client (slides screen, presenter remote, audience participation) connects to the same instance.
@@ -40,7 +43,12 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   }
 
   async onClose(ws: WebSocket) {
-    if (this.hasTag(ws, AUDIENCE)) await this.broadcastPresence(ws);
+    if (!this.hasTag(ws, AUDIENCE)) return;
+    await this.broadcastPresence(ws);
+    // So a phone that drops mid-touch doesn't leave its pointer stuck on screen.
+    if ((await this.features()).main === "pointer") {
+      this.broadcastExcept({ type: "pointer", at: null, from: this.clientId(ws) }, AUDIENCE);
+    }
   }
 
   async onMessage(ws: WebSocket, msg: ClientMessage) {
@@ -50,12 +58,25 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
         await this.ctx.storage.put("slide", msg.slide);
         return this.broadcast({ ...(await this.state()), from });
       case "toggle": {
-        if (!(msg.feature in DEFAULT_FEATURES)) return;
+        if (typeof DEFAULT_FEATURES[msg.feature] !== "boolean") return;
         const features = await this.features();
         await this.ctx.storage.put("features", { ...features, [msg.feature]: msg.on });
         this.broadcast({ ...(await this.state()), from });
         if (msg.feature === "presence" && msg.on) await this.broadcastPresence();
         return;
+      }
+      case "setMain": {
+        if (!MAIN_CONTROLS.includes(msg.main)) return;
+        const features = await this.features();
+        await this.ctx.storage.put("features", { ...features, main: msg.main });
+        return this.broadcast({ ...(await this.state()), from });
+      }
+      case "point": {
+        // Like reactions, relayed and never stored. Only screens draw pointers,
+        // so phones aren't sent every move of everyone else's finger.
+        if ((await this.features()).main !== "pointer") return;
+        const at = msg.at && { x: unit(msg.at.x), y: unit(msg.at.y) };
+        return this.broadcastExcept({ type: "pointer", at, from }, AUDIENCE);
       }
       case "react":
         // Reactions are fire-and-forget: relayed to everyone, never stored.
@@ -68,7 +89,7 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   // Called over RPC by the upload route. The image goes to the bucket;
   // the Deck only remembers when each client last uploaded one.
   async saveSelfie(id: string, image: ArrayBuffer): Promise<boolean> {
-    if (!(await this.features()).selfies) return false;
+    if ((await this.features()).main !== "selfies") return false;
     await this.env.SELFIES.put(selfieKey(id), image, { httpMetadata: { contentType: "image/jpeg" } });
     const selfie = Date.now();
     await this.ctx.storage.put(`selfie:${id}`, selfie);
@@ -83,7 +104,9 @@ export class Deck extends WebSocketServer<Env, ClientMessage, ServerMessage> {
   }
 
   async features(): Promise<Features> {
-    return { ...DEFAULT_FEATURES, ...(await this.ctx.storage.get<Features>("features")) };
+    const { reactions, presence, main } = { ...DEFAULT_FEATURES, ...(await this.ctx.storage.get<Features>("features")) };
+    // Picked out by name, so keys from older versions (like `selfies: boolean`) don't linger.
+    return { reactions, presence, main };
   }
 
   // Everyone with /participation open, once each however many tabs they have.
