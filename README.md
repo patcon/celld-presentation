@@ -33,7 +33,7 @@ Selfies use the camera only over https (or localhost), so test them through the 
 
 celld keeps its local state (the deck, selfies) in `.celld/dev`; pass `--clean` to `celld dev` to start fresh. It rebuilds the worker itself on change, but it has no HMR and doesn't handle `not_found_handling: "single-page-application"`, so the worker serves the app shell for page routes like `/remote`.
 
-Under `pnpm celld:dev`, the app can read the node's live counters from `/api/celld/state` (see [`src/useCelldState.ts`](src/useCelldState.ts)). celld puts its operator API on a random loopback port that changes whenever it restarts the node, so [`scripts/celld-operator.ts`](scripts/celld-operator.ts) finds it and forwards just `GET /state` on `127.0.0.1:5175`, for the worker to fetch. Idle cells are evicted after 10s (`CELLD_IDLE_EVICT_S`), so the Deck can be seen going dormant.
+Under `pnpm celld:dev`, the app can read what the celld node is doing from `/api/celld/state` (see [`src/useCelldState.ts`](src/useCelldState.ts)), and the architecture slide draws it live. celld puts its operator API on a random loopback port that changes whenever it restarts the node, so [`scripts/celld-operator.ts`](scripts/celld-operator.ts) finds it and serves `GET /state` on `127.0.0.1:5175`, for the worker to fetch. It adds what `/state` leaves out: the node's name and listeners, and what's in its bucket (node leases, cell owners and write logs, deployments, R2 objects), read from `.celld/dev/objects.sqlite3`. Idle cells are evicted after 10s (`CELLD_IDLE_EVICT_S`), so the Deck can be seen going dormant.
 
 ## Slides
 

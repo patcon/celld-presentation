@@ -36,37 +36,37 @@ body { margin: 0; }
 .slide-nav button:disabled { opacity: 0.2; cursor: default; }
 .join-qr { width: min(75vh, 75vw); height: auto; border-radius: 12px; }
 
-/* Fleet diagram (see components/FleetDiagram.tsx). Neutral greys work in both themes; cell states carry the colour. */
-.fleet { width: min(94vw, calc(88vh * 1200 / 690)); height: auto; color: CanvasText; }
+/* Fleet diagram (see components/FleetDiagram.tsx). Neutral greys work in both themes; cell phases carry the colour. */
+.fleet { width: min(94vw, calc(88vh * 1200 / 720)); height: auto; color: CanvasText; }
 .fleet text { fill: currentColor; text-anchor: middle; font-size: 16px; }
 .fleet text.start { text-anchor: start; }
+.fleet text.end { text-anchor: end; }
 .fleet .caption { font-size: 15px; opacity: 0.65; }
 .fleet .fleet-frame { fill: none; stroke: #8888; stroke-width: 2; stroke-dasharray: 8 6; }
 .fleet .node { fill: color-mix(in srgb, CanvasText 4%, Canvas); stroke: #8886; stroke-width: 2; }
-.fleet .node-name { font-size: 20px; font-weight: 700; }
+.fleet .node-name { font-size: 22px; font-weight: 700; }
 .fleet .worker { fill: color-mix(in srgb, CanvasText 9%, Canvas); stroke: #8884; }
-.fleet .worker-label { opacity: 0.8; }
-.fleet .client circle { fill: color-mix(in srgb, CanvasText 6%, Canvas); stroke: #8886; stroke-width: 2; }
-.fleet .client text { font-size: 24px; }
+.fleet .worker-label { font-size: 15px; opacity: 0.85; }
+.fleet circle.client { fill: var(--accent); opacity: 0.85; transform-box: fill-box; transform-origin: center; animation: arrive 0.3s ease-out; }
 .fleet .flow { fill: none; stroke: var(--accent); stroke-width: 3; }
-.fleet .flow-label { fill: var(--accent); font-weight: 600; }
 .fleet .sync { stroke: #888; stroke-width: 2; stroke-dasharray: 5 5; }
 .fleet .bucket { fill: color-mix(in srgb, CanvasText 5%, Canvas); stroke: #8888; stroke-width: 2; }
-.fleet .bucket-name { font-size: 20px; font-weight: 700; }
-.fleet .cell rect, .fleet rect.cell { stroke-width: 2; transition: fill 0.4s, stroke 0.4s; }
-.fleet .cell-name { font-weight: 600; }
-.fleet .cell-state { font-size: 13px; opacity: 0.85; }
-.fleet .cell-active rect { fill: var(--accent); stroke: var(--accent); }
-.fleet .cell-idle rect { fill: #3b82f6; stroke: #3b82f6; }
-.fleet .cell-active :is(.cell-name, .cell-state), .fleet .cell-idle :is(.cell-name, .cell-state) { fill: white; }
-.fleet .cell-hibernated rect { fill: #8b5cf633; stroke: #8b5cf6; stroke-dasharray: 6 4; }
-.fleet .cell-inactive rect, .fleet rect.cell-inactive { fill: none; stroke: #8888; stroke-dasharray: 4 4; }
+.fleet .bucket-name { font-size: 22px; font-weight: 700; }
+.fleet .bucket-chip { font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fleet .cell rect { stroke-width: 2; transition: fill 0.4s, stroke 0.4s; }
+.fleet .cell-name { font-size: 20px; font-weight: 700; }
+.fleet .cell-phase { font-size: 15px; font-weight: 600; }
+.fleet .cell-label { font: 15px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fleet .cell-detail { font-size: 14px; opacity: 0.85; }
+.fleet .cell-id { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; opacity: 0.7; }
+.fleet .cell-resident rect { fill: #3b82f6; stroke: #3b82f6; }
+.fleet .cell-changing rect { fill: var(--accent); stroke: var(--accent); }
+.fleet :is(.cell-resident, .cell-changing) :is(.cell-name, .cell-phase, .cell-label, .cell-detail, .cell-id) { fill: white; }
+.fleet .cell-dormant rect { fill: #8b5cf633; stroke: #8b5cf6; stroke-dasharray: 6 4; }
+.fleet .cell-inactive rect { fill: none; stroke: #8888; stroke-dasharray: 4 4; }
 .fleet .legend-label { font-size: 15px; }
 .fleet .legend-state { font-weight: 700; }
-/* The Deck cell's state is real (under celld), so flag it and let it pulse. */
-.fleet .live-tag { fill: #e5484d; font-size: 14px; font-weight: 700; animation: live 2s ease-in-out infinite; }
-@keyframes live { 50% { opacity: 0.4; } }
-@media (prefers-reduced-motion: reduce) { .fleet .live-tag { animation: none; } .fleet .cell rect { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .fleet .cell rect { transition: none; } .fleet circle.client { animation: none; } }
 
 /* Remote */
 /* One screen tall: the participation controls stay put up top, and only the slide list scrolls. */
