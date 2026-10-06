@@ -23,7 +23,7 @@ pnpm wrangler:dev         # Vite dev server with HMR
 pnpm wrangler:dev:share   # also opens a public Quick Tunnel, so phones can join over https
 
 pnpm celld:dev            # serve with `celld dev`, rebuilding on change (refresh to see it)
-pnpm celld:dev:share      # also opens a Quick Tunnel via `wrangler tunnel quick-start`
+pnpm celld:dev:share      # also opens a Quick Tunnel, and prints a QR code for /remote
 
 pnpm typecheck
 ```
